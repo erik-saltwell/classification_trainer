@@ -3,9 +3,6 @@ from __future__ import annotations
 from enum import StrEnum
 from pathlib import Path
 
-from classification_trainer.configuration.model_info import TargetModelName
-from classification_trainer.utils.common_paths import CommonPaths
-
 
 class FragmentID(StrEnum):
     """Identifiers for text fragment files stored in the fragments directory."""
@@ -19,6 +16,9 @@ class FragmentID(StrEnum):
 
 def get_fragment_path(fragment_id: FragmentID) -> Path:
     """Return the directory path where the given fragment file is stored."""
+    from classification_trainer.configuration.model_info import TargetModelName
+    from classification_trainer.utils.common_paths import CommonPaths
+
     return CommonPaths.get(TargetModelName.NONE).fragments
 
 

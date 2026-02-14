@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
-from classification_trainer.utils import FragmentID
+from classification_trainer.utils.text_fragments import FragmentID
 
 
 class BaseModelName(StrEnum):
