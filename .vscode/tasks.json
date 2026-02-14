@@ -1,0 +1,64 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "uv: sync",
+      "type": "shell",
+      "command": "uv sync",
+      "problemMatcher": []
+    },
+    {
+      "label": "lint: ruff check",
+      "type": "shell",
+      "command": "uv run ruff check .",
+      "problemMatcher": []
+    },
+    {
+      "label": "format: ruff format",
+      "type": "shell",
+      "command": "uv run ruff format .",
+      "problemMatcher": []
+    },
+    {
+      "label": "typecheck: mypy",
+      "type": "shell",
+      "command": "uv run mypy",
+      "problemMatcher": []
+    },
+    {
+      "label": "test: unit",
+      "type": "shell",
+      "command": "uv run pytest",
+      "problemMatcher": []
+    },
+    {
+      "label": "test: integration",
+      "type": "shell",
+      "command": "uv run pytest tests/integration",
+      "problemMatcher": []
+    },
+    {
+      "label": "sort: ssort",
+      "type": "shell",
+      "command": "uv run ssort src tests",
+      "problemMatcher": []
+    },
+    {
+      "label": "hooks: pre-commit (all files)",
+      "type": "shell",
+      "command": "uv run pre-commit run --all-files",
+      "problemMatcher": []
+    },
+    {
+      "label": "all: check (lint + format + type + unit)",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "lint: ruff check",
+        "format: ruff format",
+        "typecheck: mypy",
+        "test: unit"
+      ],
+      "problemMatcher": []
+    }
+  ]
+}

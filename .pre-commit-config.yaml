@@ -1,0 +1,49 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.3
+    hooks:
+      # Fast on commit (only touched files)
+      - id: ruff
+        args: ["--fix"]
+        stages: [pre-commit]
+      - id: ruff-format
+        stages: [pre-commit]
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      # Fast on commit (only touched files)
+      - id: check-ast
+        stages: [pre-commit]
+
+  - repo: local
+    hooks:
+      # Fast on commit (your choice; this already runs all via pass_filenames: false)
+      - id: ssort
+        name: ssort
+        entry: uv run ssort src tests
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+
+      # Full checks on push (all files)
+      - id: pytest-unit
+        name: pytest (unit)
+        entry: uv run pytest
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
+
+      - id: mypy
+        name: mypy
+        entry: uv run mypy src tests
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
+
+      - id: pyright
+        name: pyright (type check)
+        entry: uv run pyright
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
