@@ -1,12 +1,16 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from pathlib import Path
+
+from classification_trainer.configuration.model_info import TargetModelName
 
 
 @dataclass
 class CommonPaths:
     """Resolves and ensures standard project directory paths for a given target mode."""
 
-    target_mode_name: str
+    target_model_name: TargetModelName
     INPUTS_DIR: Path = Path("inputs")
     OUTPUTS_DIR: Path = Path("outputs")
     EXPLORATION_REPORTS_DIR: Path = Path("exploration_reports")
@@ -25,12 +29,12 @@ class CommonPaths:
     @property
     def inputs(self) -> Path:
         """Return the inputs directory path for the current target mode."""
-        return CommonPaths.INPUTS_DIR / self.target_mode_name
+        return CommonPaths.INPUTS_DIR / self.target_model_name
 
     @property
     def outputs(self) -> Path:
         """Return the outputs directory path for the current target mode."""
-        return CommonPaths.OUTPUTS_DIR / self.target_mode_name
+        return CommonPaths.OUTPUTS_DIR / self.target_model_name
 
     @property
     def exploration_reports(self) -> Path:
@@ -48,3 +52,8 @@ class CommonPaths:
         self.outputs.mkdir(parents=True, exist_ok=True)
         self.exploration_reports.mkdir(parents=True, exist_ok=True)
         self.computed_datasets.mkdir(parents=True, exist_ok=True)
+
+    @staticmethod
+    def get(target_model_name: TargetModelName) -> CommonPaths:
+        """static constructor to create a CommonPaths object."""
+        return CommonPaths(target_model_name)

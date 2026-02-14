@@ -1,4 +1,4 @@
-"""Model definitions, target names, format separators, and registry lookup."""
+"""Base model definitions, format separators, and registry lookup."""
 
 from __future__ import annotations
 
@@ -16,14 +16,6 @@ class BaseModelName(StrEnum):
     QWEN_25_3B_4BIT_INSTRUCT = "unsloth/Qwen2.5-3B-Instruct-bnb-4bit"
     QWEN_25_3B_05BIT_INSTRUCT = "unsloth/Qwen2.5-0.5B-Instruct-bnb-4bit"
     QWEN_25_1_5B_INSTRUCT = "unsloth/Qwen2.5-1.5B-Instruct-bnb-4bit"
-    NONE = "none"
-
-
-class TargetModelName(StrEnum):
-    """Identifiers for fine-tuned target models."""
-
-    REDDIT_RPG_POST_CLASSIFICATION = "reddit_rpg_post_classification"
-    IMDB_TEST = "imdb_sentiment_test"
     NONE = "none"
 
 
@@ -48,8 +40,8 @@ class ResponseSeperator(StrEnum):
 
 
 @dataclass(frozen=True)
-class ModelInfo:
-    """Configuration for a model including chat-template separators and prompt fragments.
+class BaseModelInfo:
+    """Configuration for a base model including chat-template separators and prompt fragments.
 
     Attributes:
         is_instruct: Whether the model is an instruction-tuned variant.
@@ -66,28 +58,28 @@ class ModelInfo:
     eval_fragment_id: FragmentID | None = None
 
 
-_model_registry: dict[BaseModelName, ModelInfo] = {
-    BaseModelName.QWEN_25_1_5B_INSTRUCT: ModelInfo(
+_base_model_registry: dict[BaseModelName, BaseModelInfo] = {
+    BaseModelName.QWEN_25_1_5B_INSTRUCT: BaseModelInfo(
         is_instruct=True,
         instruction_seperator=InstructionSeperator.CHAT_ML,
         response_seperator=ResponseSeperator.CHAT_ML,
     ),
-    BaseModelName.QWEN_25_14B_4BIT_BASE: ModelInfo(
+    BaseModelName.QWEN_25_14B_4BIT_BASE: BaseModelInfo(
         is_instruct=False,
         training_fragment_id=FragmentID.ALPACA_PROMPT_TEMPLATE,
         eval_fragment_id=FragmentID.ALPACA_PROMPT_TEMPLATE,
     ),
-    BaseModelName.QWEN_25_14B_4BIT_INSTRUCT: ModelInfo(
+    BaseModelName.QWEN_25_14B_4BIT_INSTRUCT: BaseModelInfo(
         is_instruct=True,
         instruction_seperator=InstructionSeperator.CHAT_ML,
         response_seperator=ResponseSeperator.CHAT_ML,
     ),
-    BaseModelName.QWEN_25_3B_4BIT_INSTRUCT: ModelInfo(
+    BaseModelName.QWEN_25_3B_4BIT_INSTRUCT: BaseModelInfo(
         is_instruct=True,
         instruction_seperator=InstructionSeperator.CHAT_ML,
         response_seperator=ResponseSeperator.CHAT_ML,
     ),
-    BaseModelName.QWEN_25_3B_05BIT_INSTRUCT: ModelInfo(
+    BaseModelName.QWEN_25_3B_05BIT_INSTRUCT: BaseModelInfo(
         is_instruct=True,
         instruction_seperator=InstructionSeperator.CHAT_ML,
         response_seperator=ResponseSeperator.CHAT_ML,
@@ -95,18 +87,18 @@ _model_registry: dict[BaseModelName, ModelInfo] = {
 }
 
 
-def get_model_info(model_name: BaseModelName) -> ModelInfo:
-    """Look up the configuration for a model by its base model name.
+def get_base_model_info(model_name: BaseModelName) -> BaseModelInfo:
+    """Look up the configuration for a base model.
 
     Args:
         model_name: The base model identifier to look up.
 
     Returns:
-        The corresponding ModelInfo with separators and fragment IDs.
+        The corresponding BaseModelInfo with separators and fragment IDs.
 
     Raises:
         KeyError: If the model name is not registered.
     """
-    if model_name not in _model_registry:
+    if model_name not in _base_model_registry:
         raise KeyError(f"No model data registered for {model_name}")
-    return _model_registry[model_name]
+    return _base_model_registry[model_name]
