@@ -195,9 +195,9 @@ cython_debug/
 .abstra/
 
 # Visual Studio Code
-#   Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore 
+#   Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore
 #   that can be found at https://github.com/github/gitignore/blob/main/Global/VisualStudioCode.gitignore
-#   and can be added to the global gitignore or merged into this file. However, if you prefer, 
+#   and can be added to the global gitignore or merged into this file. However, if you prefer,
 #   you could uncomment the following to ignore the entire vscode folder
 # .vscode/
 
@@ -226,3 +226,18 @@ __marimo__/
 
 # Built Visual Studio Code Extensions
 *.vsix
+
+# Unsloth generated compile artifacts (can appear in various working dirs)
+**/unsloth_compiled_cache/
+
+# Optional: if you observe these appearing under /workspace in Step 1
+**/.triton/
+**/.nv/
+**/torchinductor*/
+**/__pycache__/
+
+inputs/
+outputs/
+wandb/
+imdb_sentiment_test/
+reddit_rpg_post_classification/
