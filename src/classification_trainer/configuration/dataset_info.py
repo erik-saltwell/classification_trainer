@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import re
-from pathlib import Path
 
 import yaml
 from pydantic import BaseModel, ConfigDict, field_validator
 
-from ._hf_validators import validate_hf_name
+from classification_trainer.utils.common_paths import CommonPaths
 
-DATASET_INFO_DIR = Path("dataset_info")
+from ._hf_validators import validate_hf_name
 
 _COLUMN_NAME_RE = re.compile(r"^[a-zA-Z0-9_]+$")
 _SPLIT_NAME_RE = re.compile(r"^[a-zA-Z0-9_\-]+$")
@@ -34,9 +33,8 @@ class DatasetInfo(BaseModel):
     content_column_name: str
     label_column_name: str
     new_column_prefix: str
-    is_split: bool = False
     # Used to train the model.
-    training_split_name: str | None = None
+    training_split_name: str
     # Used for evaluation after training is complete.
     test_split_name: str | None = None
     # Used for early stopping and evaluation during training.
@@ -78,10 +76,10 @@ class DatasetInfo(BaseModel):
         return v
 
     def add_split(self) -> DatasetInfo:
+        if self.validation_split_name or self.test_split_name:
+            raise ValueError("Dataset already contains test and evaluation splits.")
         return self.model_copy(
             update={
-                "is_split": True,
-                "training_split_name": _TRAINING_SPLIT_NAME,
                 "test_split_name": _TEST_SPLIT_NAME,
                 "validation_split_name": _VALIDATION_SPLIT_NAME,
             }
@@ -101,7 +99,7 @@ def load_dataset_info(name: str) -> DatasetInfo:
         FileNotFoundError: If the yaml file does not exist.
         pydantic.ValidationError: If the file data fails validation.
     """
-    yaml_path = DATASET_INFO_DIR / f"{name}.yaml"
+    yaml_path = CommonPaths.get().dataset_info / f"{name}.yaml"
     if not yaml_path.exists():
         raise FileNotFoundError(f"Dataset info file not found: {yaml_path}")
     with yaml_path.open() as f:

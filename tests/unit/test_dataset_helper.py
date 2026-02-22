@@ -25,6 +25,7 @@ def info() -> DatasetInfo:
         content_column_name="text",
         label_column_name="label",
         new_column_prefix="ds_",
+        training_split_name="train",
     )
 
 
@@ -84,7 +85,30 @@ def test_union_mismatch_message_both_sides() -> None:
         union_datasets(ds_a, ds_b)
     msg = str(exc_info.value)
     assert "only in first" in msg
-    assert "only in second" in msg
+    assert "only in dataset 2" in msg
+
+
+def test_union_three_datasets() -> None:
+    ds_a = Dataset.from_dict({"text": [f"a{i}" for i in range(3)], "label": list(range(3))})
+    ds_b = Dataset.from_dict({"text": [f"b{i}" for i in range(3)], "label": list(range(3))})
+    ds_c = Dataset.from_dict({"text": [f"c{i}" for i in range(3)], "label": list(range(3))})
+    result = union_datasets(ds_a, ds_b, ds_c)
+    assert len(result) == 9
+    assert set(result.column_names) == {"text", "label"}
+
+
+def test_union_third_dataset_mismatch_raises() -> None:
+    ds_a = Dataset.from_dict({"text": ["a"], "label": [0]})
+    ds_b = Dataset.from_dict({"text": ["b"], "label": [1]})
+    ds_c = Dataset.from_dict({"text": ["c"]})
+    with pytest.raises(ValueError, match="Column mismatch"):
+        union_datasets(ds_a, ds_b, ds_c)
+
+
+def test_union_too_few_datasets_raises() -> None:
+    ds = Dataset.from_dict({"text": ["a"]})
+    with pytest.raises(ValueError):
+        union_datasets(ds)
 
 
 # ─── add_string_label_column ─────────────────────────────────────────────────
@@ -142,7 +166,8 @@ def test_split_dataset_happy_path(info: DatasetInfo, binary_dataset: Dataset) ->
     assert set(result_dict.keys()) == {"train", "validation", "test"}
     total = sum(len(result_dict[k]) for k in result_dict)
     assert total == 100
-    assert result_info.is_split is True
+    assert result_info.test_split_name == "test"
+    assert result_info.validation_split_name == "validation"
 
 
 # ─── make_stress_split ───────────────────────────────────────────────────────

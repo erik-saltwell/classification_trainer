@@ -31,8 +31,6 @@ def split_dataset(
     test_percent_of_total: float,
     seed: int,
 ) -> tuple[DatasetDict, DatasetInfo]:
-    if dataset_info.is_split:
-        raise ValueError("Cannot split a dataset that is already split.")
     new_dataset_info = dataset_info.add_split()  # guarantees all three split names are set
 
     if test_percent_of_total + validation_percent_of_total >= 1.0:
@@ -63,7 +61,6 @@ def split_dataset(
     test_set = non_train_resplit["train"]
 
     # These are guaranteed by add_split(); asserts narrow the types for static analysis.
-    assert new_dataset_info.training_split_name is not None
     assert new_dataset_info.validation_split_name is not None
     assert new_dataset_info.test_split_name is not None
 
@@ -100,24 +97,29 @@ def take(dataset: Dataset, count: int) -> Dataset:
     return dataset.select(range(min(count, len(dataset))))
 
 
-def union_datasets(a: Dataset, b: Dataset) -> Dataset:
-    """Concatenate two Datasets after validating they share the same columns.
+def union_datasets(*datasets: Dataset) -> Dataset:
+    """Concatenate any number of Datasets after validating they share the same columns.
 
     Raises:
-        ValueError: If the column names differ between the two datasets.
+        ValueError: If fewer than two datasets are provided or column names differ.
     """
-    cols_a = set(a.column_names)
-    cols_b = set(b.column_names)
-    if cols_a != cols_b:
-        only_a = cols_a - cols_b
-        only_b = cols_b - cols_a
-        parts: list[str] = []
-        if only_a:
-            parts.append(f"only in first: {sorted(only_a)}")
-        if only_b:
-            parts.append(f"only in second: {sorted(only_b)}")
-        raise ValueError(f"Column mismatch — {'; '.join(parts)}")
-    return concatenate_datasets([a, b])
+    if len(datasets) < 2:
+        raise ValueError(f"union_datasets requires at least 2 datasets, got {len(datasets)}")
+
+    reference_cols = set(datasets[0].column_names)
+    for i, ds in enumerate(datasets[1:], start=2):
+        ds_cols = set(ds.column_names)
+        if ds_cols != reference_cols:
+            only_ref = reference_cols - ds_cols
+            only_ds = ds_cols - reference_cols
+            parts: list[str] = []
+            if only_ref:
+                parts.append(f"only in first: {sorted(only_ref)}")
+            if only_ds:
+                parts.append(f"only in dataset {i}: {sorted(only_ds)}")
+            raise ValueError(f"Column mismatch — {'; '.join(parts)}")
+
+    return concatenate_datasets(list(datasets))
 
 
 def add_string_label_column(
