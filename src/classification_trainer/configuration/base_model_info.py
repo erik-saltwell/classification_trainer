@@ -2,12 +2,24 @@
 
 from __future__ import annotations
 
+import enum
+
 import yaml
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from classification_trainer.utils.text_fragments import FragmentID
 
+from ._hf_validators import validate_hf_name
 from .chat_template_info import ChatTemplateName
+
+
+class BaseModelName(enum.StrEnum):
+    QWEN_25_14B_4BIT_BASE = "unsloth/Qwen2.5-14B-bnb-4bit"
+    QWEN_25_14B_4BIT_INSTRUCT = "unsloth/Qwen2.5-14B-Instruct-bnb-4bit"
+    QWEN_25_3B_4BIT_INSTRUCT = "unsloth/Qwen2.5-3B-Instruct-bnb-4bit"
+    QWEN_25_3B_05BIT_INSTRUCT = "unsloth/Qwen2.5-0.5B-Instruct-bnb-4bit"
+    QWEN_25_1_5B_INSTRUCT = "unsloth/Qwen2.5-1.5B-Instruct-bnb-4bit"
+    NONE = "none"
 
 
 class BaseModelInfo(BaseModel):
@@ -19,10 +31,16 @@ class BaseModelInfo(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
+    huggingface_name: str
     is_instruct: bool
     chat_template: ChatTemplateName = ChatTemplateName.NONE
     training_fragment_id: FragmentID = FragmentID.NONE
     eval_fragment_id: FragmentID = FragmentID.NONE
+
+    @field_validator("huggingface_name")
+    @classmethod
+    def validate_huggingface_name(cls, v: str) -> str:
+        return validate_hf_name(v)
 
     @model_validator(mode="after")
     def validate_instruct_consistency(self) -> BaseModelInfo:

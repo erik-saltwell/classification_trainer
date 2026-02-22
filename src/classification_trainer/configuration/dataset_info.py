@@ -8,13 +8,9 @@ from pathlib import Path
 import yaml
 from pydantic import BaseModel, ConfigDict, field_validator
 
-DATASET_INFO_DIR = Path("dataset_info")
+from ._hf_validators import validate_hf_name
 
-# HuggingFace Hub: each segment is 1-96 chars, only [a-zA-Z0-9_\-.],
-# no leading/trailing - or ., no .git suffix.
-_HF_SEGMENT_RE = re.compile(r"^(?![-.])[a-zA-Z0-9_\-.]{1,96}(?<![-.])$")
-# Forbid consecutive -- or ..
-_HF_SEGMENT_FORBIDDEN = re.compile(r"\.\.|--")
+DATASET_INFO_DIR = Path("dataset_info")
 
 _COLUMN_NAME_RE = re.compile(r"^[a-zA-Z0-9_]+$")
 _SPLIT_NAME_RE = re.compile(r"^[a-zA-Z0-9_\-]+$")
@@ -53,20 +49,7 @@ class DatasetInfo(BaseModel):
     @field_validator("huggingface_name")
     @classmethod
     def validate_huggingface_name(cls, v: str) -> str:
-        parts = v.split("/")
-        if len(parts) > 2:
-            raise ValueError("huggingface_name may contain at most one '/' (owner/repo)")
-        for part in parts:
-            if part.endswith(".git"):
-                raise ValueError(f"Invalid huggingface_name segment '{part}': must not end with .git")
-            if not _HF_SEGMENT_RE.match(part):
-                raise ValueError(
-                    f"Invalid huggingface_name segment '{part}': must be 1-96 chars, "
-                    "only [a-zA-Z0-9_-.], not start/end with - or ."
-                )
-            if _HF_SEGMENT_FORBIDDEN.search(part):
-                raise ValueError(f"Invalid huggingface_name segment '{part}': must not contain -- or ..")
-        return v
+        return validate_hf_name(v)
 
     @field_validator("content_column_name", "label_column_name", "new_column_prefix")
     @classmethod

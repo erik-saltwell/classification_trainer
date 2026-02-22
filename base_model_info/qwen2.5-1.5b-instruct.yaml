@@ -1,2 +1,3 @@
+huggingface_name: "unsloth/Qwen2.5-1.5B-Instruct-bnb-4bit"
 is_instruct: true
 chat_template: "CHAT_ML"
