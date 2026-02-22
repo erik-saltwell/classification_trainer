@@ -1,6 +1,6 @@
-# src/reddit_rpg_miner/cli/main.py
-
 from __future__ import annotations
+
+import unsloth  # isort: skip  # Must precede all transformers imports
 
 from importlib.metadata import PackageNotFoundError, metadata
 from importlib.metadata import version as dist_version
@@ -15,6 +15,7 @@ from classification_trainer.utils.logging_config import configure_logging
 
 load_dotenv()
 configure_logging()
+print(unsloth.__version__[0:0])
 
 app = typer.Typer(
     name="classification-trainer",
