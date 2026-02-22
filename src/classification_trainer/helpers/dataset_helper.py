@@ -307,3 +307,14 @@ def add_eval_column(
         ),
         batched=True,
     )
+
+
+def prep_classification_dataset_for_training(
+    dataset_info: DatasetInfo,
+    training_info: TrainingInfo,
+    dataset: Dataset,
+    tokenizer: PreTrainedTokenizerBase,
+) -> Dataset:
+    return_set: Dataset = add_string_label_column(dataset_info, dataset)
+    return_set = add_training_column(dataset_info, training_info, return_set, tokenizer)
+    return return_set
