@@ -1,53 +1,36 @@
-"""Base model definitions and YAML loader."""
+"""Base model definitions and YAML loader.
+
+Only instruct models are supported. See .research/spec_decisions.md.
+"""
 
 from __future__ import annotations
 
 import yaml
-from pydantic import BaseModel, ConfigDict, field_validator, model_validator
-
-from classification_trainer.utils.text_fragments import FragmentID
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from ._hf_validators import validate_hf_name
 from .chat_template_info import ChatTemplateName
 
 
 class BaseModelInfo(BaseModel):
-    """Validated configuration for a base model.
-
-    For instruct models: chat_template must be set (not NONE); fragment IDs must be NONE.
-    For non-instruct models: chat_template must be NONE; both fragment IDs must be set (not NONE).
-    """
+    """Validated configuration for a base model (instruct models only)."""
 
     model_config = ConfigDict(frozen=True)
 
     huggingface_name: str
-    is_instruct: bool
-    chat_template: ChatTemplateName = ChatTemplateName.NONE
-    training_fragment_id: FragmentID = FragmentID.NONE
-    eval_fragment_id: FragmentID = FragmentID.NONE
+    chat_template: ChatTemplateName
 
     @field_validator("huggingface_name")
     @classmethod
     def validate_huggingface_name(cls, v: str) -> str:
         return validate_hf_name(v)
 
-    @model_validator(mode="after")
-    def validate_instruct_consistency(self) -> BaseModelInfo:
-        if self.is_instruct:
-            if self.chat_template == ChatTemplateName.NONE:
-                raise ValueError("chat_template cannot be NONE for instruct models")
-            if self.training_fragment_id != FragmentID.NONE:
-                raise ValueError("training_fragment_id must be NONE for instruct models")
-            if self.eval_fragment_id != FragmentID.NONE:
-                raise ValueError("eval_fragment_id must be NONE for instruct models")
-        else:
-            if self.chat_template != ChatTemplateName.NONE:
-                raise ValueError("chat_template must be NONE for non-instruct models")
-            if self.training_fragment_id == FragmentID.NONE:
-                raise ValueError("training_fragment_id cannot be NONE for non-instruct models")
-            if self.eval_fragment_id == FragmentID.NONE:
-                raise ValueError("eval_fragment_id cannot be NONE for non-instruct models")
-        return self
+    @field_validator("chat_template")
+    @classmethod
+    def validate_chat_template(cls, v: ChatTemplateName) -> ChatTemplateName:
+        if v == ChatTemplateName.NONE:
+            raise ValueError("chat_template cannot be NONE; only instruct models are supported")
+        return v
 
 
 def load_base_model_info(name: str) -> BaseModelInfo:
