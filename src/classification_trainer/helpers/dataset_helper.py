@@ -1,13 +1,15 @@
 import random as _random
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any, cast
 
 from datasets import ClassLabel, Dataset, DatasetDict, concatenate_datasets, load_dataset, load_from_disk
 from transformers import PreTrainedTokenizerBase
 
-from classification_trainer.configuration import DatasetInfo
+from classification_trainer.configuration import DatasetInfo, TrainingInfo
 
 from .token_length_helper import compute_tokens
+from .tokenizer_helper import apply_chat_template, generate_eos
 
 
 def load_dataset_from_hf(dataset_info: DatasetInfo) -> DatasetDict:
@@ -242,3 +244,66 @@ def rebalance_minority_class(
         )
 
     return rebalanced
+
+
+RowFormatter = Callable[[str, str], str]
+
+
+def _apply_template(
+    data: Mapping[str, list[Any]],
+    format_row: RowFormatter,
+    content_column_name: str,
+    labels_column_name: str,
+    new_column_name: str,
+) -> dict[str, list[str]]:
+    inputs = data[content_column_name]
+    outputs = data[labels_column_name]
+    return {new_column_name: [format_row(content, label) for content, label in zip(inputs, outputs, strict=True)]}
+
+
+def add_training_column(
+    dataset_info: DatasetInfo,
+    training_info: TrainingInfo,
+    dataset: Dataset,
+    tokenizer: PreTrainedTokenizerBase,
+) -> Dataset:
+    eos = generate_eos(tokenizer)
+
+    def format_row(inp: str, out: str) -> str:
+        return apply_chat_template(training_info.system_prompt, inp, out, tokenizer, eos)
+
+    return dataset.map(
+        lambda data: _apply_template(
+            data,
+            format_row,
+            dataset_info.content_column_name,
+            dataset_info.string_labels_column_name,
+            dataset_info.training_column_name,
+        ),
+        batched=True,
+    )
+
+
+def add_eval_column(
+    dataset_info: DatasetInfo,
+    training_info: TrainingInfo,
+    dataset: Dataset,
+    tokenizer: PreTrainedTokenizerBase,
+) -> Dataset:
+    eos = generate_eos(tokenizer)
+
+    # _out is unused: eval prompts are open-ended (no assistant turn), but RowFormatter
+    # requires two arguments because _apply_template always passes both content and label.
+    def format_row(inp: str, _out: str) -> str:
+        return apply_chat_template(training_info.system_prompt, inp, "", tokenizer, eos)
+
+    return dataset.map(
+        lambda data: _apply_template(
+            data,
+            format_row,
+            dataset_info.content_column_name,
+            dataset_info.string_labels_column_name,
+            dataset_info.evaluation_instructions_column_name,
+        ),
+        batched=True,
+    )

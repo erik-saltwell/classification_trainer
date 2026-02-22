@@ -137,6 +137,8 @@ mypy_path = ["src"]
 packages = ["classification_trainer"]
 
 [tool.pyright]
+venvPath = "."
+venv = ".venv"
 exclude = [
     "**/unsloth_compiled_cache/**",
     "**/.venv/**",

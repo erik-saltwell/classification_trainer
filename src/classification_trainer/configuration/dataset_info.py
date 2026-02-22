@@ -17,6 +17,8 @@ _SPLIT_NAME_RE = re.compile(r"^[a-zA-Z0-9_\-]+$")
 
 _TRAINING_COLUMN_NAME: str = "training"
 _PREDICTION_COLUMN_NAME: str = "prediction"
+_EVAL_INSTRUCTIONS_COLUMN_NAME: str = "eval_isntructions"
+
 _STR_LABELS_COLUMN_NAME: str = "string_labels"
 _TRAINING_SPLIT_NAME: str = "train"
 _TEST_SPLIT_NAME: str = "test"
@@ -39,6 +41,10 @@ class DatasetInfo(BaseModel):
     test_split_name: str | None = None
     # Used for early stopping and evaluation during training.
     validation_split_name: str | None = None
+
+    @property
+    def evaluation_instructions_column_name(self) -> str:
+        return self.new_column_prefix + _EVAL_INSTRUCTIONS_COLUMN_NAME
 
     @property
     def training_column_name(self) -> str:

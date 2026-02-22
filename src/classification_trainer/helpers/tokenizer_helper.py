@@ -15,29 +15,30 @@ def load_tokenizer_from_hf(base_model_info: BaseModelInfo) -> PreTrainedTokenize
     return tokenizer
 
 
-def _generate_eos(tokenizer: PreTrainedTokenizerBase) -> str:
+def generate_eos(tokenizer: PreTrainedTokenizerBase) -> str:
     eos = tokenizer.eos_token
     if eos is None:
         raise ValueError("The tokenizer does not have an EOS token defined.")
-    if isinstance(eos, list):
-        eos = eos[0]
-    eos_token: str = eos
-    return eos_token
+    if not isinstance(eos, str):
+        raise ValueError(f"Expected eos_token to be a str, got {type(eos).__name__}")
+    return eos
 
 
-def _apply_chat_template(
-    instruction: str, input: str, output: str, tokenizer: PreTrainedTokenizerBase, eos: str | None
+def apply_chat_template(
+    instruction: str, user_input: str, output: str, tokenizer: PreTrainedTokenizerBase, eos: str
 ) -> str:
     return_value: str
     messages = [
         {"role": "system", "content": instruction},
-        {"role": "user", "content": input},
+        {"role": "user", "content": user_input},
     ]
 
     if output:
         messages.append({"role": "assistant", "content": output})
         return_value = str(tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=False))
-        if eos and not return_value.rstrip().endswith(eos):
+        # Some tokenizers omit the EOS token at the end of the assistant turn; append it
+        # explicitly so the model learns to terminate its own outputs during training.
+        if not return_value.rstrip().endswith(eos):
             return_value = return_value.rstrip() + eos
     else:
         return_value = str(tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True))
