@@ -1,7 +1,37 @@
 import os
+from collections.abc import Callable
 from pathlib import Path
+from typing import TypeVar
+
+import typer
+from pydantic import ValidationError
+from rich.console import Console
+
+T = TypeVar("T")
 
 _INVALID_DIR_CHARS: frozenset[str] = frozenset('<>:"/\\|?*\0')
+
+
+def load_config_or_exit(loader: Callable[[str], T], name: str, label: str, console: Console) -> T:
+    """Load a config object by name, printing errors and exiting on failure.
+
+    Args:
+        loader: Callable that takes a name string and returns the config object.
+        name: The yaml name (no extension) to load.
+        label: Human-readable label used in error messages (e.g. "dataset info").
+        console: Rich Console for printing errors.
+
+    Returns:
+        The loaded config object.
+    """
+    try:
+        return loader(name)
+    except FileNotFoundError as e:
+        console.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(code=1) from None
+    except ValidationError as e:
+        console.print(f"[red]Invalid {label} '{name}':[/red]\n{e}")
+        raise typer.Exit(code=1) from None
 
 
 def _validate_file_exists(path: Path, label: str) -> list[str]:

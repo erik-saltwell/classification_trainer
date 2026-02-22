@@ -8,10 +8,14 @@ from typing import Annotated
 
 import typer
 from dotenv import load_dotenv
-from pydantic import ValidationError
 from rich.console import Console
 
+from classification_trainer.commands.analyze_sequence_length import AnalyzeSequenceLengthCommand
+from classification_trainer.configuration import load_base_model_info, load_dataset_info, load_training_info
 from classification_trainer.utils.logging_config import configure_logging
+
+from .console_validation import load_config_or_exit
+from .rich_logging_protocol import RichConsoleLogger
 
 load_dotenv()
 configure_logging()
@@ -26,34 +30,28 @@ app = typer.Typer(
 
 @app.command("analyze-sequence-length")
 def analyze_sequence_length(
-    dataset_info: Annotated[str, typer.Argument(help="Dataset info yaml name (no extension)")],
-    base_model_info: Annotated[str, typer.Argument(help="Base model info yaml name (no extension)")],
+    dataset_info: Annotated[str, typer.Option("--dataset", help="Dataset info yaml name (no extension)")],
+    base_model_info: Annotated[str, typer.Option("--base-model", help="Base model info yaml name (no extension)")],
+    training_info: Annotated[str, typer.Option("--training-info", help="Training info yaml name (no extension)")],
+    merge_all_splits: Annotated[
+        bool, typer.Option("--all-splits", help="Analyze all splits instead of just the training split")
+    ] = False,
 ) -> None:
     """Analyze token sequence lengths for a dataset using a model's tokenizer."""
-    from classification_trainer.configuration import load_base_model_info, load_dataset_info
 
     console = Console()
+    logger: RichConsoleLogger = RichConsoleLogger(console)
 
-    try:
-        ds_info = load_dataset_info(dataset_info)
-    except FileNotFoundError as e:
-        console.print(f"[red]Error:[/red] {e}")
-        raise typer.Exit(code=1) from None
-    except ValidationError as e:
-        console.print(f"[red]Invalid dataset info '{dataset_info}':[/red]\n{e}")
-        raise typer.Exit(code=1) from None
+    ds_info = load_config_or_exit(load_dataset_info, dataset_info, "dataset info", console)
+    bm_info = load_config_or_exit(load_base_model_info, base_model_info, "base model info", console)
+    tr_info = load_config_or_exit(load_training_info, training_info, "training info", console)
 
-    try:
-        bm_info = load_base_model_info(base_model_info)
-    except FileNotFoundError as e:
-        console.print(f"[red]Error:[/red] {e}")
-        raise typer.Exit(code=1) from None
-    except ValidationError as e:
-        console.print(f"[red]Invalid base model info '{base_model_info}':[/red]\n{e}")
-        raise typer.Exit(code=1) from None
-
-    console.print(f"[green]dataset_info:[/green] {ds_info}")
-    console.print(f"[green]base_model_info:[/green] {bm_info}")
+    AnalyzeSequenceLengthCommand(
+        dataset_info=ds_info,
+        base_model_info=bm_info,
+        training_info=tr_info,
+        merge_all_splits=merge_all_splits,
+    ).execute(logger=logger)
 
 
 @app.command("test")
