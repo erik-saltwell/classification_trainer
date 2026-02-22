@@ -1,8 +1,11 @@
 from .dataset_helper import (
+    add_eval_column,
     add_string_label_column,
+    add_training_column,
     load_dataset_from_disk,
     load_dataset_from_hf,
     make_stress_split,
+    prep_classification_dataset_for_training,
     rebalance_minority_class,
     save_dataset_to_disk,
     split_dataset,
@@ -32,4 +35,7 @@ __all__ = [
     "split_dataset",
     "take",
     "union_datasets",
+    "add_eval_column",
+    "add_training_column",
+    "prep_classification_dataset_for_training",
 ]
