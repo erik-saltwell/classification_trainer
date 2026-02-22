@@ -112,7 +112,7 @@ def test_add_string_label_missing_col_raises(info: DatasetInfo) -> None:
 
 
 def test_add_string_label_col_already_exists_raises(info: DatasetInfo, binary_dataset: Dataset) -> None:
-    ds = binary_dataset.add_column(info.string_labels_column_name, ["x"] * len(binary_dataset))
+    ds = binary_dataset.add_column(info.string_labels_column_name, ["x"] * len(binary_dataset), new_fingerprint="test")
     with pytest.raises(ValueError):
         add_string_label_column(info, ds)
 
