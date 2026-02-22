@@ -1,104 +1,66 @@
-"""Base model definitions, format separators, and registry lookup."""
+"""Base model definitions and YAML loader."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from enum import StrEnum
+import yaml
+from pydantic import BaseModel, ConfigDict, model_validator
 
 from classification_trainer.utils.text_fragments import FragmentID
 
-
-class BaseModelName(StrEnum):
-    """Identifiers for supported base models from HuggingFace."""
-
-    QWEN_25_14B_4BIT_BASE = "unsloth/Qwen2.5-14B-bnb-4bit"
-    QWEN_25_14B_4BIT_INSTRUCT = "unsloth/Qwen2.5-14B-Instruct-bnb-4bit"
-    QWEN_25_3B_4BIT_INSTRUCT = "unsloth/Qwen2.5-3B-Instruct-bnb-4bit"
-    QWEN_25_3B_05BIT_INSTRUCT = "unsloth/Qwen2.5-0.5B-Instruct-bnb-4bit"
-    QWEN_25_1_5B_INSTRUCT = "unsloth/Qwen2.5-1.5B-Instruct-bnb-4bit"
-    NONE = "none"
+from .chat_template_info import ChatTemplateName
 
 
-class InstructionSeperator(StrEnum):
-    """Chat-template tokens that mark the beginning of a user instruction."""
+class BaseModelInfo(BaseModel):
+    """Validated configuration for a base model.
 
-    CHAT_ML = "<|im_start|>user\n"
-    LLAMA = "<|start_header_id|>user<|end_header_id|>\n\n"
-    MISTRAL = "[INST]"
-    GEMMA = "<start_of_turn>user\n"
-    PHI = "<|user|>\n"
-
-
-class ResponseSeperator(StrEnum):
-    """Chat-template tokens that mark the beginning of an assistant response."""
-
-    CHAT_ML = "<|im_start|>assistant\n"
-    LLAMA = "<|start_header_id|>assistant<|end_header_id|>\n\n"
-    MISTRAL = "[/INST]"
-    GEMMA = "<start_of_turn>model\n"
-    PHI = "<|assistant|>\n"
-
-
-@dataclass(frozen=True)
-class BaseModelInfo:
-    """Configuration for a base model including chat-template separators and prompt fragments.
-
-    Attributes:
-        is_instruct: Whether the model is an instruction-tuned variant.
-        instruction_seperator: Token sequence that precedes user instructions, if applicable.
-        response_seperator: Token sequence that precedes assistant responses, if applicable.
-        training_fragment_id: Text fragment used to format training prompts for non-instruct models.
-        eval_fragment_id: Text fragment used to format evaluation prompts for non-instruct models.
+    For instruct models: chat_template must be set (not NONE); fragment IDs must be NONE.
+    For non-instruct models: chat_template must be NONE; both fragment IDs must be set (not NONE).
     """
+
+    model_config = ConfigDict(frozen=True)
 
     is_instruct: bool
-    instruction_seperator: str | None = None
-    response_seperator: str | None = None
-    training_fragment_id: FragmentID | None = None
-    eval_fragment_id: FragmentID | None = None
+    chat_template: ChatTemplateName = ChatTemplateName.NONE
+    training_fragment_id: FragmentID = FragmentID.NONE
+    eval_fragment_id: FragmentID = FragmentID.NONE
+
+    @model_validator(mode="after")
+    def validate_instruct_consistency(self) -> BaseModelInfo:
+        if self.is_instruct:
+            if self.chat_template == ChatTemplateName.NONE:
+                raise ValueError("chat_template cannot be NONE for instruct models")
+            if self.training_fragment_id != FragmentID.NONE:
+                raise ValueError("training_fragment_id must be NONE for instruct models")
+            if self.eval_fragment_id != FragmentID.NONE:
+                raise ValueError("eval_fragment_id must be NONE for instruct models")
+        else:
+            if self.chat_template != ChatTemplateName.NONE:
+                raise ValueError("chat_template must be NONE for non-instruct models")
+            if self.training_fragment_id == FragmentID.NONE:
+                raise ValueError("training_fragment_id cannot be NONE for non-instruct models")
+            if self.eval_fragment_id == FragmentID.NONE:
+                raise ValueError("eval_fragment_id cannot be NONE for non-instruct models")
+        return self
 
 
-_base_model_registry: dict[BaseModelName, BaseModelInfo] = {
-    BaseModelName.QWEN_25_1_5B_INSTRUCT: BaseModelInfo(
-        is_instruct=True,
-        instruction_seperator=InstructionSeperator.CHAT_ML,
-        response_seperator=ResponseSeperator.CHAT_ML,
-    ),
-    BaseModelName.QWEN_25_14B_4BIT_BASE: BaseModelInfo(
-        is_instruct=False,
-        training_fragment_id=FragmentID.ALPACA_PROMPT_TEMPLATE,
-        eval_fragment_id=FragmentID.ALPACA_PROMPT_TEMPLATE,
-    ),
-    BaseModelName.QWEN_25_14B_4BIT_INSTRUCT: BaseModelInfo(
-        is_instruct=True,
-        instruction_seperator=InstructionSeperator.CHAT_ML,
-        response_seperator=ResponseSeperator.CHAT_ML,
-    ),
-    BaseModelName.QWEN_25_3B_4BIT_INSTRUCT: BaseModelInfo(
-        is_instruct=True,
-        instruction_seperator=InstructionSeperator.CHAT_ML,
-        response_seperator=ResponseSeperator.CHAT_ML,
-    ),
-    BaseModelName.QWEN_25_3B_05BIT_INSTRUCT: BaseModelInfo(
-        is_instruct=True,
-        instruction_seperator=InstructionSeperator.CHAT_ML,
-        response_seperator=ResponseSeperator.CHAT_ML,
-    ),
-}
-
-
-def get_base_model_info(model_name: BaseModelName) -> BaseModelInfo:
-    """Look up the configuration for a base model.
+def load_base_model_info(name: str) -> BaseModelInfo:
+    """Load a BaseModelInfo from a YAML file in the base_model_info directory.
 
     Args:
-        model_name: The base model identifier to look up.
+        name: The yaml filename without extension (e.g. "qwen2.5-1.5b-instruct").
 
     Returns:
-        The corresponding BaseModelInfo with separators and fragment IDs.
+        A validated BaseModelInfo instance.
 
     Raises:
-        KeyError: If the model name is not registered.
+        FileNotFoundError: If the yaml file does not exist.
+        pydantic.ValidationError: If the file data fails validation.
     """
-    if model_name not in _base_model_registry:
-        raise KeyError(f"No model data registered for {model_name}")
-    return _base_model_registry[model_name]
+    from classification_trainer.utils.common_paths import CommonPaths
+
+    yaml_path = CommonPaths.get().base_model_info / f"{name}.yaml"
+    if not yaml_path.exists():
+        raise FileNotFoundError(f"Base model info file not found: {yaml_path}")
+    with yaml_path.open() as f:
+        data = yaml.safe_load(f)
+    return BaseModelInfo(**data)

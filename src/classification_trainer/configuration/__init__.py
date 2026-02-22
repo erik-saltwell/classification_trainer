@@ -1,21 +1,9 @@
-from .base_model_info import (
-    BaseModelInfo,
-    BaseModelName,
-    InstructionSeperator,
-    ResponseSeperator,
-    get_base_model_info,
-)
-from .model_info import ModelInfo, TargetModelName, get_model_info
-from .target_model_info import TargetModelInfo
+from .base_model_info import BaseModelInfo, load_base_model_info
+from .dataset_info import DatasetInfo, load_dataset_info
 
 __all__ = [
     "BaseModelInfo",
-    "BaseModelName",
-    "InstructionSeperator",
-    "ModelInfo",
-    "ResponseSeperator",
-    "TargetModelInfo",
-    "TargetModelName",
-    "get_base_model_info",
-    "get_model_info",
+    "DatasetInfo",
+    "load_base_model_info",
+    "load_dataset_info",
 ]

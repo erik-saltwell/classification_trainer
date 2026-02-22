@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from importlib.metadata import PackageNotFoundError, metadata
 from importlib.metadata import version as dist_version
+from typing import Annotated
 
 import typer
 from dotenv import load_dotenv
+from pydantic import ValidationError
 from rich.console import Console
 
 from classification_trainer.utils.logging_config import configure_logging
@@ -19,6 +21,38 @@ app = typer.Typer(
     add_completion=True,
     help="CLI for classification-trainer",
 )
+
+
+@app.command("analyze-sequence-length")
+def analyze_sequence_length(
+    dataset_info: Annotated[str, typer.Argument(help="Dataset info yaml name (no extension)")],
+    base_model_info: Annotated[str, typer.Argument(help="Base model info yaml name (no extension)")],
+) -> None:
+    """Analyze token sequence lengths for a dataset using a model's tokenizer."""
+    from classification_trainer.configuration import load_base_model_info, load_dataset_info
+
+    console = Console()
+
+    try:
+        ds_info = load_dataset_info(dataset_info)
+    except FileNotFoundError as e:
+        console.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(code=1) from None
+    except ValidationError as e:
+        console.print(f"[red]Invalid dataset info '{dataset_info}':[/red]\n{e}")
+        raise typer.Exit(code=1) from None
+
+    try:
+        bm_info = load_base_model_info(base_model_info)
+    except FileNotFoundError as e:
+        console.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(code=1) from None
+    except ValidationError as e:
+        console.print(f"[red]Invalid base model info '{base_model_info}':[/red]\n{e}")
+        raise typer.Exit(code=1) from None
+
+    console.print(f"[green]dataset_info:[/green] {ds_info}")
+    console.print(f"[green]base_model_info:[/green] {bm_info}")
 
 
 @app.command("test")

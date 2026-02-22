@@ -3,18 +3,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from classification_trainer.configuration.model_info import TargetModelName
-
 
 @dataclass
 class CommonPaths:
     """Resolves and ensures standard project directory paths for a given target mode."""
 
-    target_model_name: TargetModelName
     OUTPUTS_DIR: Path = Path("outputs")
     EXPLORATION_REPORTS_DIR: Path = Path("exploration_reports")
     FRAGMENTS_DIR: Path = Path("fragments")
     DATASETS_DIR: Path = Path("dataset_info")
+    BASE_MODEL_INFO_DIR: Path = Path("base_model_info")
 
     def __post_init__(self):
         """Create all required directories on initialization."""
@@ -23,17 +21,15 @@ class CommonPaths:
     @property
     def dataset_info(self) -> Path:
         """Return the path to the computed datasets directory under outputs."""
-        return self.outputs / CommonPaths.DATASETS_DIR
+        return CommonPaths.DATASETS_DIR
 
     @property
-    def outputs(self) -> Path:
+    def base_model_info(self) -> Path:
+        return CommonPaths.BASE_MODEL_INFO_DIR
+
+    def outputs(self, target_model_name: Path) -> Path:
         """Return the outputs directory path for the current target mode."""
-        return CommonPaths.OUTPUTS_DIR / self.target_model_name
-
-    @property
-    def exploration_reports(self) -> Path:
-        """Return the exploration reports directory path under outputs."""
-        return self.outputs / CommonPaths.EXPLORATION_REPORTS_DIR
+        return CommonPaths.OUTPUTS_DIR / target_model_name
 
     @property
     def fragments(self) -> Path:
@@ -42,11 +38,11 @@ class CommonPaths:
 
     def ensure_all_dirs_exist(self) -> None:
         """Create all project directories if they don't already exist."""
-        self.outputs.mkdir(parents=True, exist_ok=True)
-        self.exploration_reports.mkdir(parents=True, exist_ok=True)
+        self.OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
         self.dataset_info.mkdir(parents=True, exist_ok=True)
+        self.base_model_info.mkdir(parents=True, exist_ok=True)
 
     @staticmethod
-    def get(target_model_name: TargetModelName) -> CommonPaths:
+    def get() -> CommonPaths:
         """static constructor to create a CommonPaths object."""
-        return CommonPaths(target_model_name)
+        return CommonPaths()

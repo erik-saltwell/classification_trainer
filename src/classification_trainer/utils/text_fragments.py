@@ -16,10 +16,9 @@ class FragmentID(StrEnum):
 
 def get_fragment_path(fragment_id: FragmentID) -> Path:
     """Return the directory path where the given fragment file is stored."""
-    from classification_trainer.configuration.model_info import TargetModelName
     from classification_trainer.utils.common_paths import CommonPaths
 
-    return CommonPaths.get(TargetModelName.NONE).fragments
+    return CommonPaths.get().fragments
 
 
 def get_fragment(fragment_id: FragmentID) -> str:

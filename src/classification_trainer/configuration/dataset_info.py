@@ -1,22 +1,104 @@
-"""Dataset metadata definitions and lookup utilities."""
+"""Dataset metadata definitions and YAML loader."""
 
-from enum import StrEnum
+from __future__ import annotations
+
+import re
+from pathlib import Path
+
+import yaml
+from pydantic import BaseModel, ConfigDict, field_validator
+
+DATASET_INFO_DIR = Path("dataset_info")
+
+# HuggingFace Hub: each segment is 1-96 chars, only [a-zA-Z0-9_\-.],
+# no leading/trailing - or ., no .git suffix.
+_HF_SEGMENT_RE = re.compile(r"^(?![-.])[a-zA-Z0-9_\-.]{1,96}(?<![-.])$")
+# Forbid consecutive -- or ..
+_HF_SEGMENT_FORBIDDEN = re.compile(r"\.\.|--")
+
+_COLUMN_NAME_RE = re.compile(r"^[a-zA-Z0-9_]+$")
+_SPLIT_NAME_RE = re.compile(r"^[a-zA-Z0-9_\-]+$")
+
+_TRAINING_COLUMN_NAME: str = "training"
+_PREDICTION_COLUMN_NAME: str = "prediction"
+_STR_LABELS_COLUMN_NAME: str = "string_labels"
 
 
-class DatasetName(StrEnum):
-    """Enum of supported HuggingFace dataset identifiers."""
+class DatasetInfo(BaseModel):
+    """Validated metadata for a HuggingFace dataset."""
 
-    REDDIT_RPG_POST_CLASSIFICATION = "eriksalt/reddit-rpg-rules-question-classification"
-    IMDB_TEST = "stanfordnlp/imdb"
-    NONE = "none"
+    model_config = ConfigDict(frozen=True)
+
+    huggingface_name: str
+    content_column_name: str
+    label_column_name: str
+    new_column_prefix: str
+    is_split: bool = False
+    training_split_name: str | None = None
+    test_split_name: str | None = None
+    eval_split_name: str | None = None
+
+    @property
+    def training_column_name(self) -> str:
+        return self.new_column_prefix + _TRAINING_COLUMN_NAME
+
+    @property
+    def prediction_column_name(self) -> str:
+        return self.new_column_prefix + _PREDICTION_COLUMN_NAME
+
+    @property
+    def string_labels_column_name(self) -> str:
+        return self.new_column_prefix + _STR_LABELS_COLUMN_NAME
+
+    @field_validator("huggingface_name")
+    @classmethod
+    def validate_huggingface_name(cls, v: str) -> str:
+        parts = v.split("/")
+        if len(parts) > 2:
+            raise ValueError("huggingface_name may contain at most one '/' (owner/repo)")
+        for part in parts:
+            if part.endswith(".git"):
+                raise ValueError(f"Invalid huggingface_name segment '{part}': must not end with .git")
+            if not _HF_SEGMENT_RE.match(part):
+                raise ValueError(
+                    f"Invalid huggingface_name segment '{part}': must be 1-96 chars, "
+                    "only [a-zA-Z0-9_-.], not start/end with - or ."
+                )
+            if _HF_SEGMENT_FORBIDDEN.search(part):
+                raise ValueError(f"Invalid huggingface_name segment '{part}': must not contain -- or ..")
+        return v
+
+    @field_validator("content_column_name", "label_column_name", "new_column_prefix")
+    @classmethod
+    def validate_column_name(cls, v: str) -> str:
+        if not _COLUMN_NAME_RE.match(v):
+            raise ValueError(f"Invalid column name '{v}': must be non-empty and contain only [a-zA-Z0-9_]")
+        return v
+
+    @field_validator("training_split_name", "test_split_name", "eval_split_name")
+    @classmethod
+    def validate_split_name(cls, v: str | None) -> str | None:
+        if v is not None and not _SPLIT_NAME_RE.match(v):
+            raise ValueError(f"Invalid split name '{v}': must be non-empty and contain only [a-zA-Z0-9_-]")
+        return v
 
 
-class DatasetInfo:
-    huggingface_name: str  # must have value of nonzero length, and be valiid filesystem name (with no exetensions).
-    content_column_name: str  # must be valid huggging face dataset column name
-    label_column_name: str  # must be valid huggging face dataset column name
-    new_column_prefix: str  # must be valid huggging face dataset column name
-    is_split: bool = False  # whether or not this dataset has multiple Dataset splits inside it
-    training_split_name: str | None = None  # must be valid hugging face split name
-    test_split_name: str | None = None  # must be valid hugging face split name
-    eval_split_name: str | None = None  # must be valid hugging face split name
+def load_dataset_info(name: str) -> DatasetInfo:
+    """Load a DatasetInfo from a YAML file in the dataset_info directory.
+
+    Args:
+        name: The yaml filename without extension (e.g. "reddit-rpg").
+
+    Returns:
+        A validated DatasetInfo instance.
+
+    Raises:
+        FileNotFoundError: If the yaml file does not exist.
+        pydantic.ValidationError: If the file data fails validation.
+    """
+    yaml_path = DATASET_INFO_DIR / f"{name}.yaml"
+    if not yaml_path.exists():
+        raise FileNotFoundError(f"Dataset info file not found: {yaml_path}")
+    with yaml_path.open() as f:
+        data = yaml.safe_load(f)
+    return DatasetInfo(**data)

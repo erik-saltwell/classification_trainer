@@ -1,0 +1,7 @@
+huggingface_name: "stanfordnlp/imdb"
+content_column_name: "text"
+label_column_name: "label"
+new_column_prefix: "tmp_"
+is_split: true
+training_split_name: "train"
+test_split_name: "test"

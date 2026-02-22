@@ -1,0 +1,5 @@
+huggingface_name: "eriksalt/reddit-rpg-rules-question-classification"
+content_column_name: "content"
+label_column_name: "label"
+new_column_prefix: "tmp_"
+is_split: false
