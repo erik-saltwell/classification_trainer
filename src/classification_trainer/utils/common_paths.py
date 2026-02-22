@@ -11,25 +11,19 @@ class CommonPaths:
     """Resolves and ensures standard project directory paths for a given target mode."""
 
     target_model_name: TargetModelName
-    INPUTS_DIR: Path = Path("inputs")
     OUTPUTS_DIR: Path = Path("outputs")
     EXPLORATION_REPORTS_DIR: Path = Path("exploration_reports")
     FRAGMENTS_DIR: Path = Path("fragments")
-    DATASETS_DIR: Path = Path("dataset")
+    DATASETS_DIR: Path = Path("dataset_info")
 
     def __post_init__(self):
         """Create all required directories on initialization."""
         self.ensure_all_dirs_exist()
 
     @property
-    def computed_datasets(self) -> Path:
+    def dataset_info(self) -> Path:
         """Return the path to the computed datasets directory under outputs."""
         return self.outputs / CommonPaths.DATASETS_DIR
-
-    @property
-    def inputs(self) -> Path:
-        """Return the inputs directory path for the current target mode."""
-        return CommonPaths.INPUTS_DIR / self.target_model_name
 
     @property
     def outputs(self) -> Path:
@@ -48,10 +42,9 @@ class CommonPaths:
 
     def ensure_all_dirs_exist(self) -> None:
         """Create all project directories if they don't already exist."""
-        self.inputs.mkdir(parents=True, exist_ok=True)
         self.outputs.mkdir(parents=True, exist_ok=True)
         self.exploration_reports.mkdir(parents=True, exist_ok=True)
-        self.computed_datasets.mkdir(parents=True, exist_ok=True)
+        self.dataset_info.mkdir(parents=True, exist_ok=True)
 
     @staticmethod
     def get(target_model_name: TargetModelName) -> CommonPaths:
