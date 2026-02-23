@@ -68,15 +68,17 @@ def find_max_batch_size(
             test_training_info.per_device_batch_size = _next_batch_size(
                 test_training_info.per_device_batch_size, strategy
             )
+            del trainer
             if max_batch_size is not None and test_training_info.per_device_batch_size > max_batch_size:
                 logger.report_message(f"Reached max batch size cap ({max_batch_size}). Largest successful: {last_good}")
-                del trainer, model, tokenizer
-                flush_gpu_memory()
-                return last_good
-            del trainer
+                break
             flush_gpu_memory()
         except torch.cuda.OutOfMemoryError:
             logger.report_message(f"Largest succesfull batch size: {last_good}")
             del model, tokenizer
             flush_gpu_memory()
             return last_good
+
+    del model, tokenizer
+    flush_gpu_memory()
+    return last_good
