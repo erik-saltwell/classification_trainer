@@ -3,9 +3,11 @@ from __future__ import annotations
 from enum import StrEnum
 
 import yaml
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from classification_trainer.utils import FragmentID, get_fragment
+
+from .sft_parameters import SFTParameters
 
 
 class TrainingLengthType(StrEnum):
@@ -27,6 +29,7 @@ class TrainingInfo(BaseModel):
     load_in_4bit: bool = True
     packing: bool = False
     seed: int = 3412
+    sft_parameters: SFTParameters = Field(default_factory=SFTParameters)
 
     @property
     def hugging_face_model_name(self) -> str:

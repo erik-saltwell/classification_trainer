@@ -1,5 +1,5 @@
-model_name: "reddit-rpg-rules-questions-classifier"
-hugging_face_user_name: "eriksalt"
+model_name: "my-classifier"
+hugging_face_user_name: "your-hf-username"
 system_prompt_name: "rpg_post_classification_prompt.md"
 training_length_type: "epoch"
 training_length: 1.0
@@ -7,6 +7,7 @@ max_sequence_length: 1536
 per_device_batch_size: 4
 gradient_accumulation_steps: 4
 train_on_outputs_only: true
+dtype: null
 load_in_4bit: true
 packing: false
 seed: 3412
