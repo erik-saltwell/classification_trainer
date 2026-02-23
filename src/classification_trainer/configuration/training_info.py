@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from math import floor
 
 import yaml
 from pydantic import BaseModel, Field
@@ -77,7 +76,7 @@ class TrainingInfo(BaseModel):
         return "eval_loss" if self.evaluation_enabled else None
 
     def create_sft_config(self, dataset_info: DatasetInfo, report_to_wandb: bool) -> SFTConfig:
-        max_steps: int = -1 if self.training_length_type == TrainingLengthType.EPOCHS else floor(self.training_length)
+        max_steps: int = -1 if self.training_length_type == TrainingLengthType.EPOCHS else round(self.training_length)
         max_epochs: float = -1.0 if self.training_length_type == TrainingLengthType.STEPS else self.training_length
 
         return SFTConfig(
