@@ -3,8 +3,8 @@ hugging_face_user_name: "eriksalt"
 system_prompt_name: "imdb_test_prompt.md"
 training_length_type: "epoch"
 training_length: 1.0
-max_sequence_length: 1536
-per_device_batch_size: 4
+max_sequence_length: 1024
+per_device_batch_size: 6
 gradient_accumulation_steps: 4
 train_on_outputs_only: true
 load_in_4bit: true

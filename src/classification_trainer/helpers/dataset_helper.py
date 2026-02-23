@@ -100,6 +100,24 @@ def make_stress_split(
     return dataset
 
 
+def filter_by_sequence_length(
+    dataset_info: DatasetInfo,
+    dataset: Dataset,
+    tokenizer: PreTrainedTokenizerBase,
+    max_sequence_length: int,
+) -> Dataset:
+    """Return a new Dataset containing only rows whose training column
+    tokenizes to at most *max_sequence_length* tokens.
+
+    Rows exceeding the limit are dropped entirely. Uses
+    dataset_info.training_column_name as the text source, so this
+    function must be called after add_training_column().
+    """
+    return dataset.filter(
+        lambda row: compute_tokens(row[dataset_info.training_column_name], tokenizer) <= max_sequence_length
+    )
+
+
 def union_datasets(*datasets: Dataset) -> Dataset:
     """Concatenate any number of Datasets after validating they share the same columns.
 
@@ -322,4 +340,5 @@ def prep_classification_dataset_for_training(
 ) -> Dataset:
     return_set: Dataset = add_string_label_column(dataset_info, dataset)
     return_set = add_training_column(dataset_info, training_info, return_set, tokenizer)
+    return_set = filter_by_sequence_length(dataset_info, return_set, tokenizer, training_info.max_sequence_length - 5)
     return return_set
