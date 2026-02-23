@@ -1,5 +1,3 @@
-from enum import Enum
-
 import torch
 from datasets import Dataset
 
@@ -9,23 +7,14 @@ from classification_trainer.protocols.logging_protocol import LoggingProtocol
 from classification_trainer.utils import flush_gpu_memory
 
 
-class BatchSizeStrategy(Enum):
-    INCREMENT_BY_1 = "increment_by_1"
-    INCREMENT_BY_2 = "increment_by_2"
-    INCREMENT_BY_5 = "increment_by_5"
-    DOUBLE = "double"
-
-
-def _next_batch_size(current: int, strategy: BatchSizeStrategy) -> int:
-    match strategy:
-        case BatchSizeStrategy.INCREMENT_BY_1:
-            return current + 1
-        case BatchSizeStrategy.INCREMENT_BY_2:
-            return current + 2
-        case BatchSizeStrategy.INCREMENT_BY_5:
-            return current + 5
-        case BatchSizeStrategy.DOUBLE:
-            return current * 2
+def _next_batch_size_candidate(last_good: int, last_failed: int | None) -> int | None:
+    if last_failed is None:
+        # Phase 1: exponential doubling
+        return 1 if last_good == 0 else last_good * 2
+    else:
+        # Phase 2: binary search between last_good and last_failed
+        mid = (last_good + last_failed) // 2
+        return None if mid == last_good else mid
 
 
 def find_max_batch_size(
@@ -33,52 +22,51 @@ def find_max_batch_size(
     base_model_info: BaseModelInfo,
     training_info: TrainingInfo,
     train_dataset: Dataset,
+    eval_dataset: Dataset,
     logger: LoggingProtocol,
-    strategy: BatchSizeStrategy = BatchSizeStrategy.INCREMENT_BY_1,
-    starting_batch_size: int = 1,
-    max_batch_size: int | None = None,
 ) -> int:
     model, tokenizer = load_base_model(base_model_info, training_info)
 
-    last_good = 0
-    test_training_info: TrainingInfo = training_info.model_copy()
-    test_training_info.training_length_type = TrainingLengthType.STEPS
-    test_training_info.gradient_accumulation_steps = 1
-    test_training_info.per_device_batch_size = starting_batch_size
-    test_training_info.evaluation_enabled = True
-    test_training_info.evaluation_steps = 1
-    test_training_info.training_length = 2.0
+    base_test_info: TrainingInfo = training_info.model_copy(
+        update={
+            "training_length_type": TrainingLengthType.STEPS,
+            "gradient_accumulation_steps": 1,
+            "per_device_batch_size": 1,
+            "evaluation_enabled": True,
+            "evaluation_steps": 1,
+            "training_length": 3.0,
+        }
+    )
 
-    while True:
+    last_good, last_failed = 0, None
+    while (candidate := _next_batch_size_candidate(last_good, last_failed)) is not None:
         try:
+            test_info = base_test_info.model_copy(update={"per_device_batch_size": candidate})
             trainer = create_trainer(
                 dataset_info,
-                test_training_info,
+                test_info,
                 base_model_info,
                 model,
                 tokenizer,
                 train_dataset,
                 False,
-                eval_dataset=train_dataset,
+                eval_dataset=eval_dataset,
             )
-            logger.report_message(f"Probing Batch Size: {test_training_info.per_device_batch_size}")
-
+            logger.report_message(f"Probing Batch Size: {candidate}")
             run_training(trainer)
-            last_good = test_training_info.per_device_batch_size
-            test_training_info.per_device_batch_size = _next_batch_size(
-                test_training_info.per_device_batch_size, strategy
-            )
             del trainer
-            if max_batch_size is not None and test_training_info.per_device_batch_size > max_batch_size:
-                logger.report_message(f"Reached max batch size cap ({max_batch_size}). Largest successful: {last_good}")
-                break
             flush_gpu_memory()
+            last_good = candidate
         except torch.cuda.OutOfMemoryError:
-            logger.report_message(f"Largest succesfull batch size: {last_good}")
-            del model, tokenizer
             flush_gpu_memory()
-            return last_good
+            last_failed = candidate
 
     del model, tokenizer
     flush_gpu_memory()
+
+    if last_good == 0:
+        logger.report_message("No batch size fits in GPU memory — even batch size 1 caused OOM.")
+    else:
+        logger.report_message(f"Largest successful batch size: {last_good}")
+
     return last_good
