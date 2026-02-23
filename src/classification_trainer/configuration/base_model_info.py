@@ -9,7 +9,7 @@ import yaml
 from pydantic import BaseModel, ConfigDict, field_validator
 
 from ._hf_validators import validate_hf_name
-from .chat_template_info import ChatTemplateName
+from .chat_template_info import ChatTemplateInfo, ChatTemplateName, get_chat_template_by_name
 
 
 class BaseModelInfo(BaseModel):
@@ -31,6 +31,10 @@ class BaseModelInfo(BaseModel):
         if v == ChatTemplateName.NONE:
             raise ValueError("chat_template cannot be NONE; only instruct models are supported")
         return v
+
+    @property
+    def chat_template_info(self) -> ChatTemplateInfo:
+        return get_chat_template_by_name(self.chat_template)
 
 
 def load_base_model_info(name: str) -> BaseModelInfo:

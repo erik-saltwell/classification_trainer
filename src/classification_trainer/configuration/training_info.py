@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 from enum import StrEnum
+from math import floor
 
 import yaml
 from pydantic import BaseModel, Field
+from trl.trainer.sft_config import SFTConfig
 
+from classification_trainer.configuration.dataset_info import DatasetInfo
 from classification_trainer.utils import FragmentID, get_fragment
 
 from .sft_parameters import SFTParameters
@@ -13,6 +16,9 @@ from .sft_parameters import SFTParameters
 class TrainingLengthType(StrEnum):
     STEPS = "steps"
     EPOCHS = "epoch"
+
+
+_NO: str = "no"
 
 
 class TrainingInfo(BaseModel):
@@ -34,6 +40,13 @@ class TrainingInfo(BaseModel):
     loftq_iter: int = 1
     sft_parameters: SFTParameters = Field(default_factory=SFTParameters)
     rslora: bool = False
+    evaluation_steps: int = 50
+    evaluation_enabled: bool = True
+    greater_is_better: bool = False
+
+    @property
+    def load_best_model_at_end(self) -> bool:
+        return self.evaluation_enabled
 
     @property
     def lora_alpha(self) -> int:
@@ -50,6 +63,49 @@ class TrainingInfo(BaseModel):
     @property
     def system_prompt(self) -> str:
         return get_fragment(self.system_prompt_name)
+
+    @property
+    def evaluation_strategy(self) -> str:
+        return TrainingLengthType.STEPS if self.evaluation_enabled else _NO
+
+    @property
+    def save_strategy(self) -> str:
+        return TrainingLengthType.STEPS if self.evaluation_enabled else _NO
+
+    @property
+    def metric_for_best_model(self) -> str | None:
+        return "eval_loss" if self.evaluation_enabled else None
+
+    def create_sft_config(self, dataset_info: DatasetInfo, report_to_wandb: bool) -> SFTConfig:
+        max_steps: int = -1 if self.training_length_type == TrainingLengthType.EPOCHS else floor(self.training_length)
+        max_epochs: float = -1.0 if self.training_length_type == TrainingLengthType.STEPS else self.training_length
+
+        return SFTConfig(
+            dataset_text_field=dataset_info.training_column_name,
+            max_length=self.max_sequence_length,
+            packing=self.packing,
+            per_device_train_batch_size=self.per_device_batch_size,
+            gradient_accumulation_steps=self.gradient_accumulation_steps,
+            warmup_ratio=self.sft_parameters.warmup_ratio,
+            max_steps=max_steps,
+            num_train_epochs=max_epochs,
+            learning_rate=self.sft_parameters.learning_rate,
+            optim=self.sft_parameters.optim,
+            weight_decay=self.sft_parameters.weight_decay,
+            lr_scheduler_type=self.sft_parameters.lr_scheduler_type,
+            output_dir=self.model_name,
+            seed=self.seed,
+            logging_steps=10,
+            save_steps=self.evaluation_steps,
+            save_strategy=self.save_strategy,
+            eval_strategy=self.evaluation_strategy,
+            eval_steps=self.evaluation_steps,
+            fp16_full_eval=True,  # makes eval cheaper on VRAM
+            report_to="wandb" if report_to_wandb else "none",  # enable logging to W&B
+            load_best_model_at_end=self.load_best_model_at_end,
+            metric_for_best_model=self.metric_for_best_model,
+            greater_is_better=self.greater_is_better,
+        )
 
 
 def load_training_info(name: str) -> TrainingInfo:

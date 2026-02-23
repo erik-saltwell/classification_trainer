@@ -13,7 +13,7 @@ class ChatTemplateName(StrEnum):
     NONE = "NONE"
 
 
-class InstructionSeperator(StrEnum):
+class InstructionSeparator(StrEnum):
     CHAT_ML = "<|im_start|>user\n"
     LLAMA = "<|start_header_id|>user<|end_header_id|>\n\n"
     MISTRAL = "[INST]"
@@ -21,7 +21,7 @@ class InstructionSeperator(StrEnum):
     PHI = "<|user|>\n"
 
 
-class ResponseSeperator(StrEnum):
+class ResponseSeparator(StrEnum):
     """Chat-template tokens that mark the beginning of an assistant response."""
 
     CHAT_ML = "<|im_start|>assistant\n"
@@ -32,16 +32,16 @@ class ResponseSeperator(StrEnum):
 
 
 class ChatTemplateInfo(NamedTuple):
-    instruction_seperator: str
-    response_seperator: str
+    instruction_separator: str
+    response_separator: str
 
 
 _chat_templates: dict[ChatTemplateName, ChatTemplateInfo] = {
-    ChatTemplateName.CHAT_ML: ChatTemplateInfo(InstructionSeperator.CHAT_ML, ResponseSeperator.CHAT_ML),
-    ChatTemplateName.LLAMA: ChatTemplateInfo(InstructionSeperator.LLAMA, ResponseSeperator.LLAMA),
-    ChatTemplateName.MISTRAL: ChatTemplateInfo(InstructionSeperator.MISTRAL, ResponseSeperator.MISTRAL),
-    ChatTemplateName.GEMMA: ChatTemplateInfo(InstructionSeperator.GEMMA, ResponseSeperator.GEMMA),
-    ChatTemplateName.PHI: ChatTemplateInfo(InstructionSeperator.PHI, ResponseSeperator.PHI),
+    ChatTemplateName.CHAT_ML: ChatTemplateInfo(InstructionSeparator.CHAT_ML, ResponseSeparator.CHAT_ML),
+    ChatTemplateName.LLAMA: ChatTemplateInfo(InstructionSeparator.LLAMA, ResponseSeparator.LLAMA),
+    ChatTemplateName.MISTRAL: ChatTemplateInfo(InstructionSeparator.MISTRAL, ResponseSeparator.MISTRAL),
+    ChatTemplateName.GEMMA: ChatTemplateInfo(InstructionSeparator.GEMMA, ResponseSeparator.GEMMA),
+    ChatTemplateName.PHI: ChatTemplateInfo(InstructionSeparator.PHI, ResponseSeparator.PHI),
     ChatTemplateName.NONE: ChatTemplateInfo("NONE", "NONE"),
 }
 

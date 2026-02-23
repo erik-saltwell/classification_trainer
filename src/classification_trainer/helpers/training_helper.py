@@ -1,12 +1,20 @@
 from __future__ import annotations
 
 from unsloth import FastLanguageModel  # isort: skip
+from typing import cast
+
+from datasets import Dataset
 from transformers import (
     PreTrainedModel,
     PreTrainedTokenizerBase,
 )
+from transformers.trainer_utils import TrainOutput
+from trl.trainer.sft_config import SFTConfig
+from trl.trainer.sft_trainer import SFTTrainer
+from unsloth.chat_templates import train_on_responses_only
 
-from classification_trainer.configuration import BaseModelInfo, TrainingInfo
+from classification_trainer.configuration import BaseModelInfo, DatasetInfo, TrainingInfo
+from classification_trainer.configuration.chat_template_info import ChatTemplateInfo
 
 
 def load_base_model(
@@ -40,3 +48,39 @@ def load_base_model(
     )
 
     return (model, tokenizer)
+
+
+def create_trainer(
+    dataset_info: DatasetInfo,
+    training_info: TrainingInfo,
+    base_model_info: BaseModelInfo,
+    model: PreTrainedModel,
+    tokenizer: PreTrainedTokenizerBase,
+    train_dataset: Dataset,
+    report_to_wandb: bool,
+    eval_dataset: Dataset | None = None,
+) -> SFTTrainer:
+    config: SFTConfig = training_info.create_sft_config(dataset_info, report_to_wandb)
+    trainer: SFTTrainer = SFTTrainer(
+        model=model,
+        processing_class=tokenizer,
+        train_dataset=train_dataset,
+        eval_dataset=eval_dataset,
+        args=config,
+    )
+    if training_info.train_on_outputs_only:
+        chat_template_info: ChatTemplateInfo = base_model_info.chat_template_info
+
+        trainer = train_on_responses_only(
+            trainer=trainer,
+            instruction_part=chat_template_info.instruction_separator,
+            response_part=chat_template_info.response_separator,
+        )
+    return trainer
+
+
+def run_training(
+    trainer: SFTTrainer,
+) -> TrainOutput:
+    training_output = cast(TrainOutput, trainer.train())
+    return training_output  # pyright: ignore
