@@ -13,17 +13,11 @@
             "args": [
                 "compute-batch-size",
                 "--dataset",
-                "rpg_reddit_post_classification",
+                "imdb",
                 "--base-model",
                 "qwen2.5-1.5b-instruct",
                 "--training-info",
-                "reddit-rpg-rules-questions-classifier",
-                "--starting-batch-size",
-                "1",
-                "--starting-batch-size",
-                "64",
-                "--strategy",
-                "increment_by_1",
+                "imdb",
                 "--stress-set-rowcount",
                 "100",
             ]
@@ -37,11 +31,11 @@
             "args": [
                 "analyze-sequence-length",
                 "--dataset",
-                "rpg_reddit_post_classification",
+                "imdb",
                 "--base-model",
                 "qwen2.5-1.5b-instruct",
                 "--training-info",
-                "reddit-rpg-rules-questions-classifier"
+                "imdb"
             ]
         },
         {

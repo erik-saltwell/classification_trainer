@@ -4,3 +4,4 @@ label_column_name: "label"
 new_column_prefix: "tmp_"
 training_split_name: "train"
 test_split_name: "test"
+max_rowcount: 1000

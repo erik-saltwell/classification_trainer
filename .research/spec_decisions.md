@@ -80,6 +80,9 @@ Non-instruct (base) models require prompt templates to wrap inputs and outputs (
  - classification-trainer analyze-sequence-length dataset-info <dataset-yaml-file-without-extension>.
 - yaml files are each stored in their own directory based on type of data.
 
+## DatasetInfo max_rowcount
+`DatasetInfo` has a `max_rowcount` property (default `-1`) that caps how many rows are loaded per split. When set to a positive integer, each split is trimmed to at most that many rows after loading. A value of `-1` means load all rows. This is useful during development and debugging to keep iteration fast on large datasets (e.g. IMDB with 25 000 training rows).
+
 ## Supported Commands:
 - analyze-sequence-length: requires dataset-info and base-model-info (for tokenzier)
 - compute-batch-length: requires dataset-info, base-model-info and training-info

@@ -39,6 +39,8 @@ class DatasetInfo(BaseModel):
     test_split_name: str | None = None
     # Used for early stopping and evaluation during training.
     validation_split_name: str | None = None
+    # Maximum rows to load per split. -1 means load all rows.
+    max_rowcount: int = -1
 
     @property
     def evaluation_instructions_column_name(self) -> str:
@@ -66,6 +68,13 @@ class DatasetInfo(BaseModel):
     def validate_column_name(cls, v: str) -> str:
         if not _COLUMN_NAME_RE.match(v):
             raise ValueError(f"Invalid column name '{v}': must be non-empty and contain only [a-zA-Z0-9_]")
+        return v
+
+    @field_validator("max_rowcount")
+    @classmethod
+    def validate_max_rowcount(cls, v: int) -> int:
+        if v != -1 and v <= 0:
+            raise ValueError(f"max_rowcount must be -1 (load all) or a positive integer, got {v}")
         return v
 
     @field_validator("training_split_name", "test_split_name", "validation_split_name")

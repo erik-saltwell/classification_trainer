@@ -12,8 +12,16 @@ from .token_length_helper import compute_tokens
 from .tokenizer_helper import apply_chat_template, generate_eos
 
 
+def take(dataset: Dataset, count: int) -> Dataset:
+    """Return a new Dataset with at most *count* records from the start."""
+    return dataset.select(range(min(count, len(dataset))))
+
+
 def load_dataset_from_hf(dataset_info: DatasetInfo) -> DatasetDict:
-    return cast(DatasetDict, load_dataset(dataset_info.huggingface_name))
+    dataset = cast(DatasetDict, load_dataset(dataset_info.huggingface_name))
+    if dataset_info.max_rowcount != -1:
+        dataset = DatasetDict({split: take(ds, dataset_info.max_rowcount) for split, ds in dataset.items()})
+    return dataset
 
 
 def load_dataset_from_disk(path: Path) -> DatasetDict:
@@ -90,11 +98,6 @@ def make_stress_split(
     dataset = dataset.select(range(min(number_of_rows, len(dataset))))
     dataset = dataset.remove_columns("_token_count")
     return dataset
-
-
-def take(dataset: Dataset, count: int) -> Dataset:
-    """Return a new Dataset with at most *count* records from the start."""
-    return dataset.select(range(min(count, len(dataset))))
 
 
 def union_datasets(*datasets: Dataset) -> Dataset:
