@@ -20,6 +20,7 @@ from .token_length_helper import (
     get_percent_samples_within_sequence_length,
 )
 from .tokenizer_helper import load_tokenizer_from_hf
+from .wandb_helper import initialize_wandb
 
 __all__ = [
     "TokenLengthData",
@@ -40,4 +41,5 @@ __all__ = [
     "add_training_column",
     "prep_classification_dataset_for_training",
     "validate_training_column",
+    "initialize_wandb",
 ]

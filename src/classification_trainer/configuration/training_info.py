@@ -75,6 +75,10 @@ class TrainingInfo(BaseModel):
     def metric_for_best_model(self) -> str | None:
         return "eval_loss" if self.evaluation_enabled else None
 
+    def to_dict(self) -> dict[str, object]:
+        """Return a plain dict with all enum values serialized to strings."""
+        return self.model_dump(mode="json")
+
     def create_sft_config(self, dataset_info: DatasetInfo, report_to_wandb: bool) -> SFTConfig:
         max_steps: int = -1 if self.training_length_type == TrainingLengthType.EPOCHS else round(self.training_length)
         max_epochs: float = -1.0 if self.training_length_type == TrainingLengthType.STEPS else self.training_length
