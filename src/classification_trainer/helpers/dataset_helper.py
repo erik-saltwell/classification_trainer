@@ -1,15 +1,13 @@
 import random as _random
-from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any, cast
 
 from datasets import ClassLabel, Dataset, DatasetDict, concatenate_datasets, load_dataset, load_from_disk
 from transformers import PreTrainedTokenizerBase
 
-from classification_trainer.configuration import DatasetInfo, TrainingInfo
+from classification_trainer.configuration import ChatTemplateInfo, DatasetInfo, TrainingInfo
 
 from .token_length_helper import compute_tokens
-from .tokenizer_helper import apply_chat_template, generate_eos
 
 
 def take(dataset: Dataset, count: int) -> Dataset:
@@ -196,6 +194,52 @@ def add_string_label_column(
     return dataset.map(_map_b, batched=True)
 
 
+def add_training_column(
+    dataset_info: DatasetInfo,
+    training_info: TrainingInfo,
+    dataset: Dataset,
+    tokenizer: PreTrainedTokenizerBase,
+) -> Dataset:
+    """Return a new Dataset with a column containing the chat-template-formatted training text.
+
+    The output column (dataset_info.training_column_name) contains the full conversation:
+      - system: training_info.system_prompt
+      - user:   dataset_info.content_column_name
+      - assistant: dataset_info.string_labels_column_name  (added by add_string_label_column)
+
+    Raises:
+        KeyError:   if content_column_name or string_labels_column_name is missing.
+        ValueError: if training_column_name already exists.
+    """
+    for col in (dataset_info.content_column_name, dataset_info.string_labels_column_name):
+        if col not in dataset.column_names:
+            raise KeyError(f"Column '{col}' not found. Available columns: {dataset.column_names}")
+    if dataset_info.training_column_name in dataset.column_names:
+        raise ValueError(
+            f"Column '{dataset_info.training_column_name}' already exists. Choose a different new_column_prefix."
+        )
+
+    system_prompt = training_info.system_prompt
+
+    def _apply_template(batch: dict[str, list[Any]]) -> dict[str, list[Any]]:
+        results = []
+        for content, label in zip(
+            batch[dataset_info.content_column_name],
+            batch[dataset_info.string_labels_column_name],
+            strict=True,
+        ):
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": content},
+                {"role": "assistant", "content": label},
+            ]
+            text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=False)
+            results.append(text)
+        return {dataset_info.training_column_name: results}
+
+    return dataset.map(_apply_template, batched=True)
+
+
 def rebalance_minority_class(
     dataset_info: DatasetInfo,
     dataset: Dataset,
@@ -269,42 +313,91 @@ def rebalance_minority_class(
     return rebalanced
 
 
-RowFormatter = Callable[[str, str], str]
-
-
-def _apply_template(
-    data: Mapping[str, list[Any]],
-    format_row: RowFormatter,
-    content_column_name: str,
-    labels_column_name: str,
-    new_column_name: str,
-) -> dict[str, list[str]]:
-    inputs = data[content_column_name]
-    outputs = data[labels_column_name]
-    return {new_column_name: [format_row(content, label) for content, label in zip(inputs, outputs, strict=True)]}
-
-
-def add_training_column(
+def validate_training_column(
     dataset_info: DatasetInfo,
     training_info: TrainingInfo,
     dataset: Dataset,
     tokenizer: PreTrainedTokenizerBase,
+    chat_template_info: ChatTemplateInfo,
+) -> None:
+    """Validate that every row of the training column is correctly formatted.
+
+    Checks (all applied to every row; violations are collected and reported together):
+      1. Training column exists in the dataset.
+      2. No null or empty-string values.
+      3. EOS token present (when tokenizer.eos_token is not None).
+      4. Response separator present (when train_on_outputs_only=True) — absence causes
+         train_on_responses_only() to mask all tokens to -100, producing NaN loss.
+      5. Instruction separator present (when train_on_outputs_only=True).
+      6. At least one non-whitespace character follows the response separator
+         (when train_on_outputs_only=True) — guards against truncated/empty labels.
+
+    Raises:
+        KeyError:   if training_column_name is not in the dataset.
+        ValueError: if any rows fail validation, with a count summary per check.
+    """
+    col_name = dataset_info.training_column_name
+    if col_name not in dataset.column_names:
+        raise KeyError(f"Training column '{col_name}' not found. Available columns: {dataset.column_names}")
+
+    eos_token = tokenizer.eos_token
+    check_eos = eos_token is not None
+    check_separators = training_info.train_on_outputs_only
+    response_sep = chat_template_info.response_separator
+    instruction_sep = chat_template_info.instruction_separator
+
+    null_empty_count = 0
+    eos_count = 0
+    response_sep_count = 0
+    instruction_sep_count = 0
+    empty_label_count = 0
+
+    for value in dataset[col_name]:
+        if value is None or value == "":
+            null_empty_count += 1
+            continue  # remaining checks require a non-null string
+        if check_eos and eos_token not in value:
+            eos_count += 1
+        if check_separators:
+            if response_sep not in value:
+                response_sep_count += 1
+            else:
+                last_pos = value.rfind(response_sep)
+                after = value[last_pos + len(response_sep) :]
+                if not after.strip():
+                    empty_label_count += 1
+            if instruction_sep not in value:
+                instruction_sep_count += 1
+
+    violations: list[str] = []
+    total = len(dataset)
+    if null_empty_count > 0:
+        violations.append(f"  null/empty values: {null_empty_count}/{total} rows")
+    if eos_count > 0:
+        violations.append(f"  missing EOS token: {eos_count}/{total} rows")
+    if response_sep_count > 0:
+        violations.append(f"  missing response separator: {response_sep_count}/{total} rows")
+    if instruction_sep_count > 0:
+        violations.append(f"  missing instruction separator: {instruction_sep_count}/{total} rows")
+    if empty_label_count > 0:
+        violations.append(f"  no label content after response separator: {empty_label_count}/{total} rows")
+
+    if violations:
+        raise ValueError("Training column validation failed:\n" + "\n".join(violations))
+
+
+def prep_classification_dataset_for_training(
+    dataset_info: DatasetInfo,
+    training_info: TrainingInfo,
+    dataset: Dataset,
+    tokenizer: PreTrainedTokenizerBase,
+    chat_template_info: ChatTemplateInfo,
 ) -> Dataset:
-    eos = generate_eos(tokenizer)
-
-    def format_row(inp: str, out: str) -> str:
-        return apply_chat_template(training_info.system_prompt, inp, out, tokenizer, eos)
-
-    return dataset.map(
-        lambda data: _apply_template(
-            data,
-            format_row,
-            dataset_info.content_column_name,
-            dataset_info.string_labels_column_name,
-            dataset_info.training_column_name,
-        ),
-        batched=True,
-    )
+    return_set: Dataset = add_string_label_column(dataset_info, dataset)
+    return_set = add_training_column(dataset_info, training_info, return_set, tokenizer)
+    return_set = filter_by_sequence_length(dataset_info, return_set, tokenizer, training_info.max_sequence_length - 5)
+    validate_training_column(dataset_info, training_info, return_set, tokenizer, chat_template_info)
+    return return_set
 
 
 def add_eval_column(
@@ -313,32 +406,57 @@ def add_eval_column(
     dataset: Dataset,
     tokenizer: PreTrainedTokenizerBase,
 ) -> Dataset:
-    eos = generate_eos(tokenizer)
+    """Return a new Dataset with a column containing the chat-template-formatted eval prompt.
 
-    # _out is unused: eval prompts are open-ended (no assistant turn), but RowFormatter
-    # requires two arguments because _apply_template always passes both content and label.
-    def format_row(inp: str, _out: str) -> str:
-        return apply_chat_template(training_info.system_prompt, inp, "", tokenizer, eos)
+    Unlike add_training_column, the assistant turn is omitted and add_generation_prompt=True
+    is used so the formatted string ends with the response-start token. This is the prompt
+    fed to model.generate() during post-training evaluation.
 
-    return dataset.map(
-        lambda data: _apply_template(
-            data,
-            format_row,
-            dataset_info.content_column_name,
-            dataset_info.string_labels_column_name,
-            dataset_info.evaluation_instructions_column_name,
-        ),
-        batched=True,
-    )
+    Raises:
+        KeyError:   if content_column_name is missing.
+        ValueError: if evaluation_instructions_column_name already exists.
+    """
+    if dataset_info.content_column_name not in dataset.column_names:
+        raise KeyError(
+            f"Column '{dataset_info.content_column_name}' not found. Available columns: {dataset.column_names}"
+        )
+    if dataset_info.evaluation_instructions_column_name in dataset.column_names:
+        raise ValueError(
+            f"Column '{dataset_info.evaluation_instructions_column_name}' already exists. "
+            "Choose a different new_column_prefix."
+        )
+
+    system_prompt = training_info.system_prompt
+
+    def _apply_template(batch: dict[str, list[Any]]) -> dict[str, list[Any]]:
+        results = []
+        for content in batch[dataset_info.content_column_name]:
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": content},
+            ]
+            text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+            results.append(text)
+        return {dataset_info.evaluation_instructions_column_name: results}
+
+    return dataset.map(_apply_template, batched=True)
 
 
-def prep_classification_dataset_for_training(
+def prep_classification_dataset_for_eval(
     dataset_info: DatasetInfo,
     training_info: TrainingInfo,
     dataset: Dataset,
     tokenizer: PreTrainedTokenizerBase,
 ) -> Dataset:
-    return_set: Dataset = add_string_label_column(dataset_info, dataset)
-    return_set = add_training_column(dataset_info, training_info, return_set, tokenizer)
-    return_set = filter_by_sequence_length(dataset_info, return_set, tokenizer, training_info.max_sequence_length - 5)
+    """Prepare a dataset for post-training inference (classification).
+
+    Adds:
+    - string_labels_column (ground truth labels for comparison after generation)
+    - evaluation_instructions_column (open-ended prompt for model.generate())
+
+    Sequence-length filtering is not applied: eval prompts are always shorter
+    than training sequences, so any row that passed training prep will pass here.
+    """
+    return_set = add_string_label_column(dataset_info, dataset)
+    return_set = add_eval_column(dataset_info, training_info, return_set, tokenizer)
     return return_set

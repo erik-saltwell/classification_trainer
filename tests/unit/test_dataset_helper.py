@@ -5,14 +5,17 @@ from unittest.mock import MagicMock
 import pytest
 from datasets import ClassLabel, Dataset, DatasetDict, Features, Value
 
-from classification_trainer.configuration import DatasetInfo
+from classification_trainer.configuration import ChatTemplateInfo, DatasetInfo, InstructionSeparator, ResponseSeparator
 from classification_trainer.helpers.dataset_helper import (
+    add_eval_column,
     add_string_label_column,
+    add_training_column,
     make_stress_split,
     rebalance_minority_class,
     split_dataset,
     take,
     union_datasets,
+    validate_training_column,
 )
 
 # ─── shared fixtures ────────────────────────────────────────────────────────
@@ -216,6 +219,158 @@ def test_make_stress_split_no_temp_column(
     assert "_token_count" not in result.column_names
 
 
+# ─── add_training_column ─────────────────────────────────────────────────────
+
+
+@pytest.fixture
+def mock_training_info() -> MagicMock:
+    ti = MagicMock()
+    ti.system_prompt = "You are a classifier."
+    return ti
+
+
+@pytest.fixture
+def mock_template_tokenizer() -> MagicMock:
+    tok = MagicMock()
+
+    def _apply(messages: list[dict], tokenize: bool, add_generation_prompt: bool) -> str:
+        sys = next(m["content"] for m in messages if m["role"] == "system")
+        user = next(m["content"] for m in messages if m["role"] == "user")
+        asst_msg = next((m["content"] for m in messages if m["role"] == "assistant"), None)
+        base = f"<sys>{sys}</sys><user>{user}</user>"
+        if asst_msg is not None:
+            return base + f"<asst>{asst_msg}</asst>"
+        if add_generation_prompt:
+            return base + "<gen>"
+        return base
+
+    tok.apply_chat_template.side_effect = _apply
+    return tok
+
+
+@pytest.fixture
+def labelled_dataset(info: DatasetInfo) -> Dataset:
+    """Dataset that already has string_labels (as produced by add_string_label_column)."""
+    return Dataset.from_dict(
+        {
+            info.content_column_name: ["hello world", "foo bar", "baz"],
+            info.string_labels_column_name: ["pos", "neg", "pos"],
+        }
+    )
+
+
+def test_add_training_column_creates_column(
+    info: DatasetInfo, mock_training_info: MagicMock, labelled_dataset: Dataset, mock_template_tokenizer: MagicMock
+) -> None:
+    result = add_training_column(info, mock_training_info, labelled_dataset, mock_template_tokenizer)
+    assert info.training_column_name in result.column_names
+
+
+def test_add_training_column_contains_system_prompt(
+    info: DatasetInfo, mock_training_info: MagicMock, labelled_dataset: Dataset, mock_template_tokenizer: MagicMock
+) -> None:
+    result = add_training_column(info, mock_training_info, labelled_dataset, mock_template_tokenizer)
+    for text in result[info.training_column_name]:
+        assert mock_training_info.system_prompt in text
+
+
+def test_add_training_column_content_and_label_mapped_correctly(
+    info: DatasetInfo, mock_training_info: MagicMock, labelled_dataset: Dataset, mock_template_tokenizer: MagicMock
+) -> None:
+    result = add_training_column(info, mock_training_info, labelled_dataset, mock_template_tokenizer)
+    rows = result[info.training_column_name]
+    assert "<user>hello world</user>" in rows[0]
+    assert "<asst>pos</asst>" in rows[0]
+    assert "<user>foo bar</user>" in rows[1]
+    assert "<asst>neg</asst>" in rows[1]
+
+
+def test_add_training_column_missing_content_col_raises(
+    info: DatasetInfo, mock_training_info: MagicMock, mock_template_tokenizer: MagicMock
+) -> None:
+    ds = Dataset.from_dict({info.string_labels_column_name: ["pos"]})
+    with pytest.raises(KeyError, match=info.content_column_name):
+        add_training_column(info, mock_training_info, ds, mock_template_tokenizer)
+
+
+def test_add_training_column_missing_string_labels_col_raises(
+    info: DatasetInfo, mock_training_info: MagicMock, mock_template_tokenizer: MagicMock
+) -> None:
+    ds = Dataset.from_dict({info.content_column_name: ["hello"]})
+    with pytest.raises(KeyError, match=info.string_labels_column_name):
+        add_training_column(info, mock_training_info, ds, mock_template_tokenizer)
+
+
+def test_add_training_column_already_exists_raises(
+    info: DatasetInfo, mock_training_info: MagicMock, labelled_dataset: Dataset, mock_template_tokenizer: MagicMock
+) -> None:
+    ds = labelled_dataset.add_column(info.training_column_name, ["x"] * len(labelled_dataset), new_fingerprint="test")
+    with pytest.raises(ValueError, match=info.training_column_name):
+        add_training_column(info, mock_training_info, ds, mock_template_tokenizer)
+
+
+# ─── add_eval_column ─────────────────────────────────────────────────────────
+
+
+@pytest.fixture
+def content_only_dataset(info: DatasetInfo) -> Dataset:
+    """Dataset with only the content column (no label columns yet)."""
+    return Dataset.from_dict({info.content_column_name: ["hello world", "foo bar", "baz"]})
+
+
+def test_add_eval_column_creates_column(
+    info: DatasetInfo, mock_training_info: MagicMock, content_only_dataset: Dataset, mock_template_tokenizer: MagicMock
+) -> None:
+    result = add_eval_column(info, mock_training_info, content_only_dataset, mock_template_tokenizer)
+    assert info.evaluation_instructions_column_name in result.column_names
+
+
+def test_add_eval_column_contains_system_prompt_and_content(
+    info: DatasetInfo, mock_training_info: MagicMock, content_only_dataset: Dataset, mock_template_tokenizer: MagicMock
+) -> None:
+    result = add_eval_column(info, mock_training_info, content_only_dataset, mock_template_tokenizer)
+    rows = result[info.evaluation_instructions_column_name]
+    assert mock_training_info.system_prompt in rows[0]
+    assert "hello world" in rows[0]
+    assert "foo bar" in rows[1]
+
+
+def test_add_eval_column_no_assistant_turn(
+    info: DatasetInfo, mock_training_info: MagicMock, content_only_dataset: Dataset, mock_template_tokenizer: MagicMock
+) -> None:
+    result = add_eval_column(info, mock_training_info, content_only_dataset, mock_template_tokenizer)
+    for text in result[info.evaluation_instructions_column_name]:
+        assert "<asst>" not in text
+        assert "<gen>" in text  # add_generation_prompt=True sentinel
+
+
+def test_add_eval_column_uses_add_generation_prompt(
+    info: DatasetInfo, mock_training_info: MagicMock, content_only_dataset: Dataset, mock_template_tokenizer: MagicMock
+) -> None:
+    add_eval_column(info, mock_training_info, content_only_dataset, mock_template_tokenizer)
+    call_kwargs = mock_template_tokenizer.apply_chat_template.call_args_list[0].kwargs
+    assert call_kwargs.get("add_generation_prompt") is True
+    assert call_kwargs.get("tokenize") is False
+
+
+def test_add_eval_column_missing_content_col_raises(
+    info: DatasetInfo, mock_training_info: MagicMock, mock_template_tokenizer: MagicMock
+) -> None:
+    ds = Dataset.from_dict({"other": ["x"]})
+    with pytest.raises(KeyError, match=info.content_column_name):
+        add_eval_column(info, mock_training_info, ds, mock_template_tokenizer)
+
+
+def test_add_eval_column_already_exists_raises(
+    info: DatasetInfo, mock_training_info: MagicMock, content_only_dataset: Dataset, mock_template_tokenizer: MagicMock
+) -> None:
+    ds = content_only_dataset.add_column(
+        info.evaluation_instructions_column_name, ["x"] * len(content_only_dataset), new_fingerprint="test"
+    )
+    with pytest.raises(ValueError, match=info.evaluation_instructions_column_name):
+        add_eval_column(info, mock_training_info, ds, mock_template_tokenizer)
+
+
 # ─── rebalance_minority_class ────────────────────────────────────────────────
 
 
@@ -264,3 +419,184 @@ def test_rebalance_cannot_achieve_raises(info: DatasetInfo) -> None:
     )
     with pytest.raises(ValueError):
         rebalance_minority_class(info, ds, 0.2, 0.05)
+
+
+# ─── validate_training_column ─────────────────────────────────────────────────
+
+_INST_SEP = InstructionSeparator.CHAT_ML  # "<|im_start|>user\n"
+_RESP_SEP = ResponseSeparator.CHAT_ML  # "<|im_start|>assistant\n"
+_EOS = "<|im_end|>"
+
+
+def _chatml_row(content: str, label: str) -> str:
+    return f"<|im_start|>system\nYou are a classifier.{_EOS}\n{_INST_SEP}{content}{_EOS}\n{_RESP_SEP}{label}{_EOS}"
+
+
+@pytest.fixture
+def chatml_template_info() -> ChatTemplateInfo:
+    return ChatTemplateInfo(InstructionSeparator.CHAT_ML, ResponseSeparator.CHAT_ML)
+
+
+@pytest.fixture
+def mock_eos_tokenizer() -> MagicMock:
+    tok = MagicMock()
+    tok.eos_token = _EOS
+    return tok
+
+
+@pytest.fixture
+def mock_training_info_outputs_only() -> MagicMock:
+    ti = MagicMock()
+    ti.train_on_outputs_only = True
+    return ti
+
+
+@pytest.fixture
+def mock_training_info_no_outputs_only() -> MagicMock:
+    ti = MagicMock()
+    ti.train_on_outputs_only = False
+    return ti
+
+
+@pytest.fixture
+def valid_training_dataset(info: DatasetInfo) -> Dataset:
+    rows = [_chatml_row("hello world", "pos"), _chatml_row("foo bar", "neg"), _chatml_row("baz", "pos")]
+    return Dataset.from_dict({info.training_column_name: rows})
+
+
+def test_validate_happy_path(
+    info: DatasetInfo,
+    mock_training_info_outputs_only: MagicMock,
+    valid_training_dataset: Dataset,
+    mock_eos_tokenizer: MagicMock,
+    chatml_template_info: ChatTemplateInfo,
+) -> None:
+    # Should complete without raising
+    validate_training_column(
+        info, mock_training_info_outputs_only, valid_training_dataset, mock_eos_tokenizer, chatml_template_info
+    )
+
+
+def test_validate_missing_training_column_raises_key_error(
+    info: DatasetInfo,
+    mock_training_info_outputs_only: MagicMock,
+    mock_eos_tokenizer: MagicMock,
+    chatml_template_info: ChatTemplateInfo,
+) -> None:
+    ds = Dataset.from_dict({"other_col": ["hello"]})
+    with pytest.raises(KeyError):
+        validate_training_column(info, mock_training_info_outputs_only, ds, mock_eos_tokenizer, chatml_template_info)
+
+
+def test_validate_null_value_raises(
+    info: DatasetInfo,
+    mock_training_info_outputs_only: MagicMock,
+    mock_eos_tokenizer: MagicMock,
+    chatml_template_info: ChatTemplateInfo,
+) -> None:
+    ds = Dataset.from_dict({info.training_column_name: [_chatml_row("a", "pos"), None]})
+    with pytest.raises(ValueError, match="null/empty"):
+        validate_training_column(info, mock_training_info_outputs_only, ds, mock_eos_tokenizer, chatml_template_info)
+
+
+def test_validate_empty_string_raises(
+    info: DatasetInfo,
+    mock_training_info_outputs_only: MagicMock,
+    mock_eos_tokenizer: MagicMock,
+    chatml_template_info: ChatTemplateInfo,
+) -> None:
+    ds = Dataset.from_dict({info.training_column_name: [_chatml_row("a", "pos"), ""]})
+    with pytest.raises(ValueError, match="null/empty"):
+        validate_training_column(info, mock_training_info_outputs_only, ds, mock_eos_tokenizer, chatml_template_info)
+
+
+def test_validate_missing_response_separator_raises(
+    info: DatasetInfo,
+    mock_training_info_outputs_only: MagicMock,
+    mock_eos_tokenizer: MagicMock,
+    chatml_template_info: ChatTemplateInfo,
+) -> None:
+    # Row without the response separator
+    bad_row = f"<|im_start|>system\nYou are a classifier.{_EOS}\n{_INST_SEP}hello{_EOS}\nno-separator-here{_EOS}"
+    ds = Dataset.from_dict({info.training_column_name: [bad_row]})
+    with pytest.raises(ValueError, match="response separator"):
+        validate_training_column(info, mock_training_info_outputs_only, ds, mock_eos_tokenizer, chatml_template_info)
+
+
+def test_validate_missing_instruction_separator_raises(
+    info: DatasetInfo,
+    mock_training_info_outputs_only: MagicMock,
+    mock_eos_tokenizer: MagicMock,
+    chatml_template_info: ChatTemplateInfo,
+) -> None:
+    bad_row = f"<|im_start|>system\nYou are a classifier.{_EOS}\nno-user-sep{_EOS}\n{_RESP_SEP}pos{_EOS}"
+    ds = Dataset.from_dict({info.training_column_name: [bad_row]})
+    with pytest.raises(ValueError, match="instruction separator"):
+        validate_training_column(info, mock_training_info_outputs_only, ds, mock_eos_tokenizer, chatml_template_info)
+
+
+def test_validate_nothing_after_response_separator_raises(
+    info: DatasetInfo,
+    mock_training_info_outputs_only: MagicMock,
+    mock_eos_tokenizer: MagicMock,
+    chatml_template_info: ChatTemplateInfo,
+) -> None:
+    # Response separator present but only whitespace follows
+    bad_row = f"{_INST_SEP}hello{_EOS}\n{_RESP_SEP}   \n"
+    ds = Dataset.from_dict({info.training_column_name: [bad_row]})
+    with pytest.raises(ValueError, match="label content"):
+        validate_training_column(info, mock_training_info_outputs_only, ds, mock_eos_tokenizer, chatml_template_info)
+
+
+def test_validate_missing_eos_raises(
+    info: DatasetInfo,
+    mock_training_info_outputs_only: MagicMock,
+    mock_eos_tokenizer: MagicMock,
+    chatml_template_info: ChatTemplateInfo,
+) -> None:
+    # Row without the EOS token
+    bad_row = f"{_INST_SEP}hello\n{_RESP_SEP}pos"
+    ds = Dataset.from_dict({info.training_column_name: [bad_row]})
+    with pytest.raises(ValueError, match="EOS"):
+        validate_training_column(info, mock_training_info_outputs_only, ds, mock_eos_tokenizer, chatml_template_info)
+
+
+def test_validate_train_on_outputs_only_false_skips_separator_checks(
+    info: DatasetInfo,
+    mock_training_info_no_outputs_only: MagicMock,
+    mock_eos_tokenizer: MagicMock,
+    chatml_template_info: ChatTemplateInfo,
+) -> None:
+    # Row with EOS but no separators — should pass when train_on_outputs_only=False
+    row = f"some text without separators {_EOS}"
+    ds = Dataset.from_dict({info.training_column_name: [row]})
+    validate_training_column(info, mock_training_info_no_outputs_only, ds, mock_eos_tokenizer, chatml_template_info)
+
+
+def test_validate_eos_token_none_skips_eos_check(
+    info: DatasetInfo,
+    mock_training_info_no_outputs_only: MagicMock,
+    chatml_template_info: ChatTemplateInfo,
+) -> None:
+    tok = MagicMock()
+    tok.eos_token = None
+    # Row without any EOS — passes because eos_token is None and separators not checked
+    ds = Dataset.from_dict({info.training_column_name: ["just some text"]})
+    validate_training_column(info, mock_training_info_no_outputs_only, ds, tok, chatml_template_info)
+
+
+def test_validate_multiple_violations_reported_together(
+    info: DatasetInfo,
+    mock_training_info_outputs_only: MagicMock,
+    mock_eos_tokenizer: MagicMock,
+    chatml_template_info: ChatTemplateInfo,
+) -> None:
+    # Row missing both EOS and response separator (and therefore instruction separator too)
+    bad_row = "plain text with no special tokens"
+    ds = Dataset.from_dict({info.training_column_name: [bad_row]})
+    with pytest.raises(ValueError) as exc_info:
+        validate_training_column(info, mock_training_info_outputs_only, ds, mock_eos_tokenizer, chatml_template_info)
+    msg = str(exc_info.value)
+    assert "EOS" in msg
+    assert "response separator" in msg
+    assert "instruction separator" in msg

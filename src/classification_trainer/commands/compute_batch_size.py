@@ -56,7 +56,11 @@ class ComputeBatchSizeCommand(CommmandProtocol):
         self, dataset: Dataset, tokenizer: PreTrainedTokenizerBase, logger: LoggingProtocol
     ) -> Dataset:
         return_dataset: Dataset = prep_classification_dataset_for_training(
-            self.dataset_info, self.training_info, dataset, tokenizer
+            self.dataset_info,
+            self.training_info,
+            dataset,
+            tokenizer,
+            self.base_model_info.chat_template_info,
         )
         # A1 — pass return_dataset (post-prep) not the raw dataset
         return_dataset = make_stress_split(self.dataset_info, return_dataset, self.stress_set_rowcount, tokenizer)

@@ -16,7 +16,7 @@ _SPLIT_NAME_RE = re.compile(r"^[a-zA-Z0-9_\-]+$")
 
 _TRAINING_COLUMN_NAME: str = "training"
 _PREDICTION_COLUMN_NAME: str = "prediction"
-_EVAL_INSTRUCTIONS_COLUMN_NAME: str = "eval_isntructions"
+_EVAL_INSTRUCTIONS_COLUMN_NAME: str = "eval_instructions"
 
 _STR_LABELS_COLUMN_NAME: str = "string_labels"
 _TRAINING_SPLIT_NAME: str = "train"

@@ -31,7 +31,13 @@ class AnalyzeSequenceLengthCommand(CommmandProtocol):
         if self.merge_all_splits:
             dataset = union_datasets(*dataset_dict.values())
         tokenizer: PreTrainedTokenizerBase = load_tokenizer_from_hf(self.base_model_info)
-        dataset = prep_classification_dataset_for_training(self.dataset_info, self.training_info, dataset, tokenizer)
+        dataset = prep_classification_dataset_for_training(
+            self.dataset_info,
+            self.training_info,
+            dataset,
+            tokenizer,
+            self.base_model_info.chat_template_info,
+        )
 
         result: TokenLengthData = analyze_token_lengths(self.dataset_info, dataset, tokenizer)
 
