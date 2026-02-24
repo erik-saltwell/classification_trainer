@@ -392,10 +392,14 @@ def prep_classification_dataset_for_training(
     dataset: Dataset,
     tokenizer: PreTrainedTokenizerBase,
     chat_template_info: ChatTemplateInfo,
+    filter_long_content: bool = True,
 ) -> Dataset:
     return_set: Dataset = add_string_label_column(dataset_info, dataset)
     return_set = add_training_column(dataset_info, training_info, return_set, tokenizer)
-    return_set = filter_by_sequence_length(dataset_info, return_set, tokenizer, training_info.max_sequence_length - 5)
+    if filter_long_content:
+        return_set = filter_by_sequence_length(
+            dataset_info, return_set, tokenizer, training_info.max_sequence_length - 5
+        )
     validate_training_column(dataset_info, training_info, return_set, tokenizer, chat_template_info)
     return return_set
 
@@ -440,23 +444,3 @@ def add_eval_column(
         return {dataset_info.evaluation_instructions_column_name: results}
 
     return dataset.map(_apply_template, batched=True)
-
-
-def prep_classification_dataset_for_eval(
-    dataset_info: DatasetInfo,
-    training_info: TrainingInfo,
-    dataset: Dataset,
-    tokenizer: PreTrainedTokenizerBase,
-) -> Dataset:
-    """Prepare a dataset for post-training inference (classification).
-
-    Adds:
-    - string_labels_column (ground truth labels for comparison after generation)
-    - evaluation_instructions_column (open-ended prompt for model.generate())
-
-    Sequence-length filtering is not applied: eval prompts are always shorter
-    than training sequences, so any row that passed training prep will pass here.
-    """
-    return_set = add_string_label_column(dataset_info, dataset)
-    return_set = add_eval_column(dataset_info, training_info, return_set, tokenizer)
-    return return_set

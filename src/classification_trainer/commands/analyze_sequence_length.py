@@ -37,6 +37,7 @@ class AnalyzeSequenceLengthCommand(CommmandProtocol):
             dataset,
             tokenizer,
             self.base_model_info.chat_template_info,
+            filter_long_content=False,
         )
 
         result: TokenLengthData = analyze_token_lengths(self.dataset_info, dataset, tokenizer)

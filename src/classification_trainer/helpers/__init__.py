@@ -5,7 +5,6 @@ from .dataset_helper import (
     load_dataset_from_disk,
     load_dataset_from_hf,
     make_stress_split,
-    prep_classification_dataset_for_eval,
     prep_classification_dataset_for_training,
     rebalance_minority_class,
     save_dataset_to_disk,
@@ -39,7 +38,6 @@ __all__ = [
     "union_datasets",
     "add_eval_column",
     "add_training_column",
-    "prep_classification_dataset_for_eval",
     "prep_classification_dataset_for_training",
     "validate_training_column",
 ]
