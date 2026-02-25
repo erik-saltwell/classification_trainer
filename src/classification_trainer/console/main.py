@@ -12,6 +12,7 @@ from rich.console import Console
 
 from classification_trainer.commands.analyze_sequence_length import AnalyzeSequenceLengthCommand
 from classification_trainer.commands.compute_batch_size import ComputeBatchSizeCommand
+from classification_trainer.commands.train import TrainCommand
 from classification_trainer.configuration import load_base_model_info, load_dataset_info, load_training_info
 from classification_trainer.utils.logging_config import configure_logging
 
@@ -52,6 +53,29 @@ def analyze_sequence_length(
         base_model_info=bm_info,
         training_info=tr_info,
         merge_all_splits=merge_all_splits,
+    ).execute(logger=logger)
+
+
+@app.command("train")
+def train(
+    dataset_info: Annotated[str, typer.Option("--dataset", help="Dataset info yaml name (no extension)")],
+    base_model_info: Annotated[str, typer.Option("--base-model", help="Base model info yaml name (no extension)")],
+    training_info: Annotated[str, typer.Option("--training-info", help="Training info yaml name (no extension)")],
+    run_comparison: Annotated[
+        bool, typer.Option("--run-comparison", help="Evaluate on test set before and after training to compare results")
+    ] = False,
+) -> None:
+    console = Console()
+    logger: RichConsoleLogger = RichConsoleLogger(console)
+
+    ds_info = load_config_or_exit(load_dataset_info, dataset_info, "dataset info", console)
+    bm_info = load_config_or_exit(load_base_model_info, base_model_info, "base model info", console)
+    tr_info = load_config_or_exit(load_training_info, training_info, "training info", console)
+
+    TrainCommand(
+        dataset_info=ds_info,
+        base_model_info=bm_info,
+        training_info=tr_info,
     ).execute(logger=logger)
 
 
