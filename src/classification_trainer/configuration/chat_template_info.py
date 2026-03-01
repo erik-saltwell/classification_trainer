@@ -1,52 +1,70 @@
+"""Chat template definitions and YAML loader."""
+
 from __future__ import annotations
 
-from enum import StrEnum
-from typing import NamedTuple
+import yaml
+from pydantic import BaseModel, ConfigDict
+from transformers import PreTrainedTokenizerBase
+
+from classification_trainer.utils.common_paths import CommonPaths
 
 
-class ChatTemplateName(StrEnum):
-    CHAT_ML = "CHAT_ML"
-    LLAMA = "LLAMA"
-    MISTRAL = "MISTRAL"
-    GEMMA = "GEMMA"
-    PHI = "PHI"
-    NONE = "NONE"
+class ChatTemplateInfo(BaseModel):
+    """Validated configuration for a chat template."""
 
+    model_config = ConfigDict(frozen=True)
 
-class InstructionSeparator(StrEnum):
-    CHAT_ML = "<|im_start|>user\n"
-    LLAMA = "<|start_header_id|>user<|end_header_id|>\n\n"
-    MISTRAL = "[INST]"
-    GEMMA = "<start_of_turn>user\n"
-    PHI = "<|user|>\n"
-
-
-class ResponseSeparator(StrEnum):
-    """Chat-template tokens that mark the beginning of an assistant response."""
-
-    CHAT_ML = "<|im_start|>assistant\n"
-    LLAMA = "<|start_header_id|>assistant<|end_header_id|>\n\n"
-    MISTRAL = "[/INST]"
-    GEMMA = "<start_of_turn>model\n"
-    PHI = "<|assistant|>\n"
-
-
-class ChatTemplateInfo(NamedTuple):
     instruction_separator: str
     response_separator: str
+    stop_strings: tuple[str, ...] = ()
+    eos_token_strings: tuple[str, ...] = ()
+    add_special_tokens: bool = False
+    assistant_newline: bool = True
+
+    def get_eos_token_ids(self, tokenizer: PreTrainedTokenizerBase) -> list[int]:
+        ids: list[int] = []
+        for s in self.eos_token_strings:
+            tid: int = tokenizer.convert_tokens_to_ids(s)  # pyright: ignore
+            if tid != -1:
+                ids.append(tid)
+        eos_id: int | None = getattr(tokenizer, "eos_token_id", None)
+        if eos_id is not None:
+            ids.append(eos_id)
+        # de-dupe preserving order
+        seen = set()
+        out = []
+        for x in ids:
+            if x not in seen:
+                seen.add(x)
+                out.append(x)
+        return out
+
+    def trim_at_stop_strings(self, text: str) -> str:
+        stop_strings = self.stop_strings
+        cut = None
+        for s in stop_strings:
+            idx = text.find(s)
+            if idx != -1:
+                cut = idx if cut is None else min(cut, idx)
+        return text[:cut].strip() if cut is not None else text.strip()
 
 
-_chat_templates: dict[ChatTemplateName, ChatTemplateInfo] = {
-    ChatTemplateName.CHAT_ML: ChatTemplateInfo(InstructionSeparator.CHAT_ML, ResponseSeparator.CHAT_ML),
-    ChatTemplateName.LLAMA: ChatTemplateInfo(InstructionSeparator.LLAMA, ResponseSeparator.LLAMA),
-    ChatTemplateName.MISTRAL: ChatTemplateInfo(InstructionSeparator.MISTRAL, ResponseSeparator.MISTRAL),
-    ChatTemplateName.GEMMA: ChatTemplateInfo(InstructionSeparator.GEMMA, ResponseSeparator.GEMMA),
-    ChatTemplateName.PHI: ChatTemplateInfo(InstructionSeparator.PHI, ResponseSeparator.PHI),
-    ChatTemplateName.NONE: ChatTemplateInfo("NONE", "NONE"),
-}
+def load_chat_template_info(name: str) -> ChatTemplateInfo:
+    """Load a ChatTemplateInfo from a YAML file in the chat_template_info directory.
 
+    Args:
+        name: The yaml filename without extension (e.g. "chat-ml").
 
-def get_chat_template_by_name(template_name: ChatTemplateName) -> ChatTemplateInfo:
-    if template_name not in _chat_templates:
-        raise KeyError(template_name)
-    return _chat_templates[template_name]
+    Returns:
+        A validated ChatTemplateInfo instance.
+
+    Raises:
+        FileNotFoundError: If the yaml file does not exist.
+        pydantic.ValidationError: If the file data fails validation.
+    """
+    yaml_path = CommonPaths.get().chat_template_info / f"{name}.yaml"
+    if not yaml_path.exists():
+        raise FileNotFoundError(f"Chat template info file not found: {yaml_path}")
+    with yaml_path.open() as f:
+        data = yaml.safe_load(f)
+    return ChatTemplateInfo(**data)

@@ -65,6 +65,10 @@ class LoggingProtocol(Protocol):
         """Log a row of key-value data, typically rendered as a table."""
         ...
 
+    def report_multicolumn_table(self, headers: list[str], rows: list[list[str]]) -> None:
+        """Log a columnar table with the given headers and rows."""
+        ...
+
     def add_break(self, break_count: int = 1) -> None:
         """Insert visual line breaks in the output."""
         ...
@@ -141,6 +145,10 @@ class NullLogger(LoggingProtocol):
         pass
 
     def report_table_message(self, row_data: dict[str, Any]) -> None:
+        """No-op: discard table data."""
+        pass
+
+    def report_multicolumn_table(self, headers: list[str], rows: list[list[str]]) -> None:
         """No-op: discard table data."""
         pass
 

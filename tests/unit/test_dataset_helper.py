@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 import pytest
 from datasets import ClassLabel, Dataset, DatasetDict, Features, Value
 
-from classification_trainer.configuration import ChatTemplateInfo, DatasetInfo, InstructionSeparator, ResponseSeparator
+from classification_trainer.configuration import ChatTemplateInfo, DatasetInfo
 from classification_trainer.helpers.dataset_helper import (
     add_eval_column,
     add_string_label_column,
@@ -423,8 +423,8 @@ def test_rebalance_cannot_achieve_raises(info: DatasetInfo) -> None:
 
 # ─── validate_training_column ─────────────────────────────────────────────────
 
-_INST_SEP = InstructionSeparator.CHAT_ML  # "<|im_start|>user\n"
-_RESP_SEP = ResponseSeparator.CHAT_ML  # "<|im_start|>assistant\n"
+_INST_SEP = "<|im_start|>user\n"
+_RESP_SEP = "<|im_start|>assistant\n"
 _EOS = "<|im_end|>"
 
 
@@ -434,7 +434,7 @@ def _chatml_row(content: str, label: str) -> str:
 
 @pytest.fixture
 def chatml_template_info() -> ChatTemplateInfo:
-    return ChatTemplateInfo(InstructionSeparator.CHAT_ML, ResponseSeparator.CHAT_ML)
+    return ChatTemplateInfo(instruction_separator=_INST_SEP, response_separator=_RESP_SEP)
 
 
 @pytest.fixture

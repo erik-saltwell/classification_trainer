@@ -136,6 +136,9 @@ ignore_missing_imports = true
 mypy_path = ["src"]
 packages = ["classification_trainer"]
 
+[tool.uv]
+managed = true
+
 [tool.pyright]
 venvPath = "."
 venv = ".venv"

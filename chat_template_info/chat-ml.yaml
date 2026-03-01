@@ -1,0 +1,6 @@
+instruction_separator: "<|im_start|>user\n"
+response_separator: "<|im_start|>assistant\n"
+stop_strings: ["<|im_end|>", "<|im_start|>"]
+eos_token_strings: ["<|im_end|>"]
+add_special_tokens: false
+assistant_newline: true

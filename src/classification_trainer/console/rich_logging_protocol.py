@@ -47,6 +47,18 @@ class RichConsoleLogger(LoggingProtocol):
             table.add_row(str(key), str(value))
         self._console.print(table)
 
+    def report_multicolumn_table(self, headers: list[str], rows: list[list[str]]) -> None:
+        table = Table(
+            show_header=True,
+            show_lines=True,
+            box=box.SQUARE,
+        )
+        for header in headers:
+            table.add_column(header)
+        for row in rows:
+            table.add_row(*row)
+        self._console.print(table)
+
     def add_break(self, break_count: int = 1) -> None:
         for _ in range(break_count):
             self.report_message("")

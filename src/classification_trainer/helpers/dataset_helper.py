@@ -3,11 +3,15 @@ from pathlib import Path
 from typing import Any, cast
 
 from datasets import ClassLabel, Dataset, DatasetDict, concatenate_datasets, load_dataset, load_from_disk
+from datasets.utils.logging import set_verbosity_error
 from transformers import PreTrainedTokenizerBase
 
 from classification_trainer.configuration import ChatTemplateInfo, DatasetInfo, TrainingInfo
+from classification_trainer.protocols.logging_protocol import LoggingProtocol
 
 from .token_length_helper import compute_tokens
+
+set_verbosity_error()
 
 
 def take(dataset: Dataset, count: int) -> Dataset:
@@ -444,3 +448,10 @@ def add_eval_column(
         return {dataset_info.evaluation_instructions_column_name: results}
 
     return dataset.map(_apply_template, batched=True)
+
+
+def log_dataset(dataset: Dataset, logger: LoggingProtocol, row_count: int = 1) -> None:
+    for i in range(min(row_count, len(dataset))):
+        row = dataset[i]
+        logger.report_table_message(row)
+        logger.add_break()

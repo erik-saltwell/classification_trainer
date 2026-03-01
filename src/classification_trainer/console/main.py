@@ -61,9 +61,12 @@ def train(
     dataset_info: Annotated[str, typer.Option("--dataset", help="Dataset info yaml name (no extension)")],
     base_model_info: Annotated[str, typer.Option("--base-model", help="Base model info yaml name (no extension)")],
     training_info: Annotated[str, typer.Option("--training-info", help="Training info yaml name (no extension)")],
-    run_comparison: Annotated[
-        bool, typer.Option("--run-comparison", help="Evaluate on test set before and after training to compare results")
-    ] = False,
+    run_comparison_before_training: Annotated[
+        bool,
+        typer.Option(
+            "--run-comparison-before-training", help="Evaluate on test set before and after training to compare results"
+        ),
+    ] = True,
 ) -> None:
     console = Console()
     logger: RichConsoleLogger = RichConsoleLogger(console)
@@ -76,6 +79,7 @@ def train(
         dataset_info=ds_info,
         base_model_info=bm_info,
         training_info=tr_info,
+        run_comparison_before_training=run_comparison_before_training,
     ).execute(logger=logger)
 
 

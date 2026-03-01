@@ -3,4 +3,4 @@ content_column_name: "text"
 label_column_name: "label"
 new_column_prefix: "tmp_"
 training_split_name: "train"
-max_rowcount: -1
+max_rowcount: 100

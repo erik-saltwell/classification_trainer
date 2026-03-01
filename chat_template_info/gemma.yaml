@@ -1,0 +1,6 @@
+instruction_separator: "<start_of_turn>user\n"
+response_separator: "<start_of_turn>model\n"
+stop_strings: ["<end_of_turn>"]
+eos_token_strings: ["<end_of_turn>"]
+add_special_tokens: false
+assistant_newline: false
