@@ -102,6 +102,11 @@ def generate_label_text(
 ) -> str:
     prompt_text = _clean_prompt_ending(prompt_text, template)
 
+    # Unsloth's model.generate() silently resets tokenizer.padding_side to "right"
+    # (https://github.com/unslothai/unsloth/issues/3283). Re-assert left-padding
+    # before tokenization so subsequent batch calls are not affected.
+    tokenizer.padding_side = "left"
+
     enc = tokenizer(
         prompt_text, return_tensors="pt", add_special_tokens=template.add_special_tokens, pad_to_multiple_of=8
     )
@@ -115,7 +120,6 @@ def generate_label_text(
     return _decode_and_trim_generated_texts(tokenizer, enc, out_ids, template)[0]
 
 
-@torch.inference_mode()
 def generate_label_texts(
     model: PreTrainedModel,
     tokenizer: PreTrainedTokenizerBase,
@@ -124,43 +128,19 @@ def generate_label_texts(
     template: ChatTemplateInfo,
 ) -> list[str]:
     """
-    Batched inference.
+    Batched inference — processes prompts one at a time to avoid Unsloth padding bugs.
+
+    Unsloth's patched attention kernels corrupt outputs for padded (shorter) sequences
+    in a batch (unsloth#267, unsloth#1456, unsloth#2939). Additionally, model.generate()
+    silently resets tokenizer.padding_side to "right" (unsloth#3283). Until Unsloth fixes
+    batched generation, we delegate to single-row generate_label_text for correctness.
 
     Args:
         prompt_texts: list of already-templated prompt strings (one per row)
     Returns:
         list[str] of decoded + trimmed completions (same length/order as prompt_texts)
     """
-    if not prompt_texts:
-        return []
-
-    prompt_texts = [_clean_prompt_ending(p, template) for p in prompt_texts]
-
-    enc = tokenizer(
-        prompt_texts,
-        return_tensors="pt",
-        padding=True,
-        truncation=True,
-        add_special_tokens=template.add_special_tokens,
-        pad_to_multiple_of=8,
-    )
-    device = next(model.parameters()).device
-    enc = {k: v.to(device) for k, v in enc.items()}
-
-    eos_token_id: int | list[int] | None = _compute_eos_token_id(tokenizer, template)
-    pad_token_id = get_pad_token_id(tokenizer)
-
-    gen_kwargs: dict[str, Any] = _build_generate_kwargs(
-        enc,
-        inference_info,
-        tokenizer,
-        eos_token_id,
-        pad_token_id,
-    )
-
-    out_ids = model.generate(**gen_kwargs)  # type: ignore
-
-    return _decode_and_trim_generated_texts(tokenizer, enc, out_ids, template)
+    return [generate_label_text(model, tokenizer, prompt, inference_info, template) for prompt in prompt_texts]
 
 
 def add_inferred_column(
