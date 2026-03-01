@@ -17,24 +17,12 @@ from classification_trainer.configuration import BaseModelInfo, DatasetInfo, Tra
 from classification_trainer.configuration.chat_template_info import ChatTemplateInfo
 
 
-def load_base_model(
-    base_model_info: BaseModelInfo, training_options: TrainingInfo
-) -> tuple[PreTrainedModel, PreTrainedTokenizerBase]:
-    model: PreTrainedModel
-    tokenizer: PreTrainedTokenizerBase
-    model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name=base_model_info.huggingface_name,
-        max_seq_length=training_options.max_sequence_length,
-        dtype=training_options.dtype,
-        load_in_4bit=training_options.load_in_4bit,
-        use_gradient_checkpointing="unsloth",
-    )
-
+def _apply_peft(model: PreTrainedModel, training_options: TrainingInfo) -> PreTrainedModel:
     loftq_config: dict[str, int] | None = None
     if training_options.use_loftq:
         loftq_config = {"loftq_bits": training_options.loftq_bits, "loftq_iter": training_options.loftq_iter}
 
-    model = FastLanguageModel.get_peft_model(
+    return FastLanguageModel.get_peft_model(
         model,
         training_options.sft_parameters.rank,
         target_modules=training_options.sft_parameters.training_modules,
@@ -47,6 +35,38 @@ def load_base_model(
         loftq_config=loftq_config,
     )
 
+
+def load_base_model(
+    base_model_info: BaseModelInfo, training_options: TrainingInfo
+) -> tuple[PreTrainedModel, PreTrainedTokenizerBase]:
+    model: PreTrainedModel
+    tokenizer: PreTrainedTokenizerBase
+    model, tokenizer = FastLanguageModel.from_pretrained(
+        model_name=base_model_info.huggingface_name,
+        max_seq_length=training_options.max_sequence_length,
+        dtype=training_options.dtype,
+        load_in_4bit=training_options.load_in_4bit,
+        use_gradient_checkpointing="unsloth",
+    )
+    model = _apply_peft(model, training_options)
+    return (model, tokenizer)
+
+
+def load_base_model_with_vllm(
+    base_model_info: BaseModelInfo, training_options: TrainingInfo
+) -> tuple[PreTrainedModel, PreTrainedTokenizerBase]:
+    model: PreTrainedModel
+    tokenizer: PreTrainedTokenizerBase
+    model, tokenizer = FastLanguageModel.from_pretrained(
+        model_name=base_model_info.huggingface_name,
+        max_seq_length=training_options.max_sequence_length,
+        dtype=training_options.dtype,
+        load_in_4bit=training_options.load_in_4bit,
+        use_gradient_checkpointing="unsloth",
+        fast_inference=True,
+        max_lora_rank=training_options.sft_parameters.rank,
+    )
+    model = _apply_peft(model, training_options)
     return (model, tokenizer)
 
 
