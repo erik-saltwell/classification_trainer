@@ -13,13 +13,11 @@ from classification_trainer.helpers.dataset_helper import (
 )
 from classification_trainer.helpers.inference_helper import (
     add_inferred_column,
-    add_inferred_column_with_vllm,
     generate_label_text,
-    generate_label_text_with_vllm,
     setup_unsloth_inference,
 )
 from classification_trainer.helpers.tokenizer_helper import load_tokenizer_from_hf
-from classification_trainer.helpers.training_helper import load_base_model_with_vllm
+from classification_trainer.helpers.training_helper import load_base_model
 from classification_trainer.protocols import CommmandProtocol, LoggingProtocol
 
 
@@ -65,10 +63,20 @@ class TrainCommand(CommmandProtocol):
             True,
         )
         test_dataset = add_eval_column(self.dataset_info, self.training_info, test_dataset, tokenizer)
-        model, tokenizer = load_base_model_with_vllm(self.base_model_info, self.training_info)
+        # if self.run_comparison_before_training:
+        #     log_dataset(test_dataset, logger, 1)
+        model, tokenizer = load_base_model(self.base_model_info, self.training_info)
         model, tokenizer = setup_unsloth_inference(model, tokenizer)
         inference_info: InferenceInfo = InferenceInfo()
         chat_template: ChatTemplateInfo = self.base_model_info.chat_template_info
+        # test_prompt: str = test_dataset[0][self.dataset_info.evaluation_instructions_column_name]
+        # result: str = generate_label_text(
+        #     model,
+        #     tokenizer,
+        #     test_prompt,
+        #     inference_info,
+        #     chat_template,
+        # )
         self.compare_inference_methods(test_dataset, model, tokenizer, inference_info, chat_template, logger)
 
     def compare_inference_methods(
@@ -82,11 +90,9 @@ class TrainCommand(CommmandProtocol):
     ) -> None:
         prompt_col = self.dataset_info.evaluation_instructions_column_name
 
-        # --- Phase 1: HF inference (model already loaded) ---
-
-        # Single-row HF inference
-        single_hf_results: list[str] = []
-        with logger.progress("Single-row HF inference", total=len(dataset)) as progress:
+        # Single-row inference
+        single_results: list[str] = []
+        with logger.progress("Single-row inference", total=len(dataset)) as progress:
             for row in dataset:
                 result = generate_label_text(
                     model,
@@ -95,11 +101,11 @@ class TrainCommand(CommmandProtocol):
                     inference_info,
                     chat_template,
                 )
-                single_hf_results.append(result)
+                single_results.append(result)
                 progress.advance()
 
-        # Batched HF inference via add_inferred_column
-        batch_hf_dataset = add_inferred_column(
+        # Batched inference via add_inferred_column
+        batch_dataset = add_inferred_column(
             dataset,
             self.dataset_info,
             model,
@@ -108,50 +114,13 @@ class TrainCommand(CommmandProtocol):
             chat_template,
             logger=logger,
         )
-        batch_hf_results: list[str] = batch_hf_dataset[self.dataset_info.prediction_column_name]
+        batch_results: list[str] = batch_dataset[self.dataset_info.prediction_column_name]
 
-        # --- Phase 2: vLLM inference via Unsloth's vllm_engine ---
-
-        vllm_engine = model.vllm_engine  # pyright: ignore[attr-defined]
-        lora_request = model.load_lora("_lora_compare", load_tensors=True)  # pyright: ignore[reportCallIssue, reportAttributeAccessIssue]
-
-        # Single-row vLLM inference
-        single_vllm_results: list[str] = []
-        with logger.progress("Single-row vLLM inference", total=len(dataset)) as progress:
-            for row in dataset:
-                result = generate_label_text_with_vllm(
-                    vllm_engine,
-                    row[prompt_col],  # pyright: ignore
-                    inference_info,
-                    chat_template,
-                    lora_request=lora_request,
-                )
-                single_vllm_results.append(result)
-                progress.advance()
-
-        # Batched vLLM inference
-        vllm_batch_dataset = add_inferred_column_with_vllm(
-            dataset,
-            self.dataset_info,
-            vllm_engine,
-            inference_info,
-            chat_template,
-            lora_request=lora_request,
-            logger=logger,
-        )
-        batch_vllm_results: list[str] = vllm_batch_dataset[self.dataset_info.prediction_column_name]
-
-        # --- Output comparison table ---
+        # Output comparison table
         logger.report_multicolumn_table(
-            headers=["input", "single_hf", "batch_hf", "single_vllm", "batch_vllm"],
+            headers=["input", "single", "batch"],
             rows=[
-                [
-                    batch_hf_dataset[i][self.dataset_info.content_column_name],
-                    single_hf_results[i],
-                    batch_hf_results[i],
-                    single_vllm_results[i],
-                    batch_vllm_results[i],
-                ]
+                [batch_dataset[i][self.dataset_info.content_column_name], single_results[i], batch_results[i]]
                 for i in range(len(dataset))
             ],
         )
