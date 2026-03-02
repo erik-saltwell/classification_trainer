@@ -10,7 +10,7 @@ import typer
 from dotenv import load_dotenv
 from rich.console import Console
 
-from classification_trainer.commands.analyze_sequence_length import AnalyzeSequenceLengthCommand
+from classification_trainer.commands.analyze_dataset import AnalyzeDatasetCommand
 from classification_trainer.commands.compute_batch_size import ComputeBatchSizeCommand
 from classification_trainer.commands.test import TestCommand
 from classification_trainer.commands.train import TrainCommand
@@ -31,7 +31,7 @@ app = typer.Typer(
 )
 
 
-@app.command("analyze-sequence-length")
+@app.command("analyze-dataset")
 def analyze_sequence_length(
     dataset_info: Annotated[str, typer.Option("--dataset", help="Dataset info yaml name (no extension)")],
     base_model_info: Annotated[str, typer.Option("--base-model", help="Base model info yaml name (no extension)")],
@@ -40,8 +40,6 @@ def analyze_sequence_length(
         bool, typer.Option("--all-splits", help="Analyze all splits instead of just the training split")
     ] = False,
 ) -> None:
-    """Analyze token sequence lengths for a dataset using a model's tokenizer."""
-
     console = Console()
     logger: RichConsoleLogger = RichConsoleLogger(console)
 
@@ -49,7 +47,7 @@ def analyze_sequence_length(
     bm_info = load_config_or_exit(load_base_model_info, base_model_info, "base model info", console)
     tr_info = load_config_or_exit(load_training_info, training_info, "training info", console)
 
-    AnalyzeSequenceLengthCommand(
+    AnalyzeDatasetCommand(
         dataset_info=ds_info,
         base_model_info=bm_info,
         training_info=tr_info,

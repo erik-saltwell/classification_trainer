@@ -450,6 +450,38 @@ def add_eval_column(
     return dataset.map(_apply_template, batched=True)
 
 
+def label_distribution(
+    dataset_info: DatasetInfo,
+    dataset: Dataset,
+) -> dict[str, float]:
+    """Return the fraction of rows belonging to each label.
+
+    Uses string_labels_column_name if present, otherwise falls back to
+    label_column_name (values are cast to str).
+
+    Raises:
+        KeyError: if neither column exists in the dataset.
+    """
+    if dataset_info.string_labels_column_name in dataset.column_names:
+        col = dataset_info.string_labels_column_name
+    elif dataset_info.label_column_name in dataset.column_names:
+        col = dataset_info.label_column_name
+    else:
+        raise KeyError(
+            f"Neither '{dataset_info.string_labels_column_name}' nor "
+            f"'{dataset_info.label_column_name}' found in dataset columns: {dataset.column_names}"
+        )
+
+    labels: list[Any] = dataset[col]
+    total = len(labels)
+    counts: dict[str, int] = {}
+    for label in labels:
+        key = str(label)
+        counts[key] = counts.get(key, 0) + 1
+
+    return {key: count / total for key, count in counts.items()}
+
+
 def log_dataset(dataset: Dataset, logger: LoggingProtocol, row_count: int = 1) -> None:
     for i in range(min(row_count, len(dataset))):
         row = dataset[i]

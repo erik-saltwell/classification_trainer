@@ -50,15 +50,15 @@
             ]
         },
         {
-            "name": "--sequence",
+            "name": "--dataset",
             "type": "debugpy",
             "request": "launch",
             "module": "classification_trainer",
             "console": "integratedTerminal",
             "args": [
-                "analyze-sequence-length",
+                "analyze-dataset",
                 "--dataset",
-                "imdb",
+                "imdb_full",
                 "--base-model",
                 "qwen2.5-1.5b-instruct",
                 "--training-info",

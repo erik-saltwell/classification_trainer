@@ -5,7 +5,10 @@ from transformers import PreTrainedTokenizerBase
 from classification_trainer.configuration import BaseModelInfo, DatasetInfo
 from classification_trainer.configuration.training_info import TrainingInfo
 from classification_trainer.helpers.dataset_helper import (
+    add_eval_column,
+    label_distribution,
     load_dataset_from_hf,
+    log_dataset,
     prep_classification_dataset_for_training,
     union_datasets,
 )
@@ -19,7 +22,7 @@ from classification_trainer.protocols import CommmandProtocol, LoggingProtocol
 
 
 @dataclass
-class AnalyzeSequenceLengthCommand(CommmandProtocol):
+class AnalyzeDatasetCommand(CommmandProtocol):
     dataset_info: DatasetInfo
     base_model_info: BaseModelInfo
     training_info: TrainingInfo
@@ -39,9 +42,18 @@ class AnalyzeSequenceLengthCommand(CommmandProtocol):
             self.base_model_info.chat_template_info,
             filter_long_content=False,
         )
+        dataset = add_eval_column(self.dataset_info, self.training_info, dataset, tokenizer)
+        logger.report_message(f"Sample row for {self.dataset_info.huggingface_name}")
+        log_dataset(dataset, logger)
+        logger.add_break()
+
+        label_distributions: dict[str, float] = label_distribution(self.dataset_info, dataset)
+        logger.report_message(f"Label distributions for {self.dataset_info.huggingface_name}")
+        logger.report_table_message(label_distributions)
 
         result: TokenLengthData = analyze_token_lengths(self.dataset_info, dataset, tokenizer)
 
+        logger.report_message(f"Sequence lengths for {self.dataset_info.huggingface_name}")
         logger.report_table_message(result._asdict())
         self.produce_coverage_report_from_target(dataset, 1024, tokenizer, logger)
         self.produce_coverage_report_from_target(dataset, 1536, tokenizer, logger)

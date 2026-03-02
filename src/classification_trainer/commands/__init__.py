@@ -1,7 +1,11 @@
-from .analyze_sequence_length import AnalyzeSequenceLengthCommand
+from .analyze_dataset import AnalyzeDatasetCommand
 from .compute_batch_size import ComputeBatchSizeCommand
+from .test import TestCommand
+from .train import TrainCommand
 
 __all__ = [
-    "AnalyzeSequenceLengthCommand",
+    "AnalyzeDatasetCommand",
     "ComputeBatchSizeCommand",
+    "TestCommand",
+    "TrainCommand",
 ]
