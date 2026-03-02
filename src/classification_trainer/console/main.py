@@ -12,6 +12,7 @@ from rich.console import Console
 
 from classification_trainer.commands.analyze_sequence_length import AnalyzeSequenceLengthCommand
 from classification_trainer.commands.compute_batch_size import ComputeBatchSizeCommand
+from classification_trainer.commands.test import TestCommand
 from classification_trainer.commands.train import TrainCommand
 from classification_trainer.configuration import load_base_model_info, load_dataset_info, load_training_info
 from classification_trainer.utils.logging_config import configure_logging
@@ -113,7 +114,8 @@ def compute_batch_size(
 def test() -> None:
     """Simple smoke command."""
     console = Console()
-    console.print("[green]Hello from test[/green]")
+    logger: RichConsoleLogger = RichConsoleLogger(console)
+    TestCommand().execute(logger)
 
 
 def _version_callback(value: bool) -> None:

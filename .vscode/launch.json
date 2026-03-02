@@ -5,6 +5,16 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "--test",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "classification_trainer",
+            "console": "integratedTerminal",
+            "args": [
+                "test",
+            ]
+        },
+        {
             "name": "--train",
             "type": "debugpy",
             "request": "launch",

@@ -15,6 +15,7 @@ class CommonPaths:
     BASE_MODEL_INFO_DIR: Path = Path("base_model_info")
     TRAINING_INFO_DIR: Path = Path("training_info")
     CHAT_TEMPLATE_INFO_DIR: Path = Path("chat_template_info")
+    INFERENCE_INFO_DIR: Path = Path("inference_info")
 
     def __post_init__(self):
         """Create all required directories on initialization."""
@@ -36,6 +37,10 @@ class CommonPaths:
     @property
     def chat_template_info(self) -> Path:
         return CommonPaths.CHAT_TEMPLATE_INFO_DIR
+
+    @property
+    def inference_info(self) -> Path:
+        return CommonPaths.INFERENCE_INFO_DIR
 
     def outputs(self, target_model_name: Path) -> Path:
         """Return the outputs directory path for the current target mode."""

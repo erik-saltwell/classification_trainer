@@ -1,4 +1,7 @@
+import yaml
 from pydantic import BaseModel, ConfigDict
+
+from classification_trainer.utils.common_paths import CommonPaths
 
 
 class InferenceInfo(BaseModel):
@@ -17,3 +20,24 @@ class InferenceInfo(BaseModel):
 
     # If you're using Unsloth, flip fast inference mode before generate
     prepare_unsloth_inference: bool = True
+
+
+def load_inference_info(name: str) -> InferenceInfo:
+    """Load a DatasetInfo from a YAML file in the dataset_info directory.
+
+    Args:
+        name: The yaml filename without extension (e.g. "reddit-rpg").
+
+    Returns:
+        A validated DatasetInfo instance.
+
+    Raises:
+        FileNotFoundError: If the yaml file does not exist.
+        pydantic.ValidationError: If the file data fails validation.
+    """
+    yaml_path = CommonPaths.get().inference_info / f"{name}.yaml"
+    if not yaml_path.exists():
+        raise FileNotFoundError(f"Dataset info file not found: {yaml_path}")
+    with yaml_path.open() as f:
+        data = yaml.safe_load(f)
+    return InferenceInfo(**data)
