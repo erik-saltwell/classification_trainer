@@ -21,6 +21,8 @@ class InferenceInfo(BaseModel):
     # If you're using Unsloth, flip fast inference mode before generate
     prepare_unsloth_inference: bool = True
 
+    metrics: tuple[str, ...] = ("accuracy", "precision", "recall", "f1", "total_seen")
+
 
 def load_inference_info(name: str) -> InferenceInfo:
     """Load a DatasetInfo from a YAML file in the dataset_info directory.

@@ -29,6 +29,7 @@ def info() -> DatasetInfo:
         label_column_name="label",
         new_column_prefix="ds_",
         training_split_name="train",
+        positive_case="pos",
     )
 
 

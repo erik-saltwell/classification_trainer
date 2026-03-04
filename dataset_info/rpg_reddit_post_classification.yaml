@@ -3,3 +3,7 @@ content_column_name: "content"
 label_column_name: "label"
 new_column_prefix: "tmp_"
 training_split_name: "train"
+positive_case: "Question"
+case_invariant_comparison: true
+search_length: 20
+search_from_end: false

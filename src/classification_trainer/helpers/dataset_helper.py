@@ -487,3 +487,11 @@ def log_dataset(dataset: Dataset, logger: LoggingProtocol, row_count: int = 1) -
         row = dataset[i]
         logger.report_table_message(row)
         logger.add_break()
+
+
+def remove_generated_columns(dataset_info: DatasetInfo, dataset: Dataset) -> Dataset:
+    return_dataset: Dataset = dataset
+    for column_name in dataset_info.get_generated_column_names():
+        if column_name in return_dataset.column_names:
+            return_dataset = return_dataset.remove_columns(column_name)
+    return return_dataset

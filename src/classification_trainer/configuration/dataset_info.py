@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Iterator
 
 import yaml
 from pydantic import BaseModel, ConfigDict, field_validator
@@ -22,6 +23,7 @@ _STR_LABELS_COLUMN_NAME: str = "string_labels"
 _TRAINING_SPLIT_NAME: str = "train"
 _TEST_SPLIT_NAME: str = "test"
 _VALIDATION_SPLIT_NAME: str = "validation"
+_CLASSIFICATION_RESULT_COLUMN_NAME: str = "classification_result"
 
 
 class DatasetInfo(BaseModel):
@@ -41,6 +43,22 @@ class DatasetInfo(BaseModel):
     validation_split_name: str | None = None
     # Maximum rows to load per split. -1 means load all rows.
     max_rowcount: int = -1
+    # Evaluation settings
+    positive_case: str
+    case_invariant_comparison: bool = True
+    search_length: int = -1
+    search_from_end: bool = False
+
+    def get_generated_column_names(self) -> Iterator[str]:
+        yield self.classification_result_column_name
+        yield self.prediction_column_name
+        yield self.string_labels_column_name
+        yield self.evaluation_instructions_column_name
+        yield self.training_column_name
+
+    @property
+    def classification_result_column_name(self) -> str:
+        return self.new_column_prefix + _CLASSIFICATION_RESULT_COLUMN_NAME
 
     @property
     def evaluation_instructions_column_name(self) -> str:

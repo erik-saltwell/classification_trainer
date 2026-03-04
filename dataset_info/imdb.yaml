@@ -4,3 +4,7 @@ label_column_name: "label"
 new_column_prefix: "tmp_"
 training_split_name: "train"
 max_rowcount: 100
+positive_case: "pos"
+case_invariant_comparison: true
+search_length: -1
+search_from_end: false

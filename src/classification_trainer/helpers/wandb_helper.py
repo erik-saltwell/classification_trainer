@@ -1,7 +1,6 @@
 import os
 
 import wandb
-
 from classification_trainer.configuration.training_info import TrainingInfo
 
 
