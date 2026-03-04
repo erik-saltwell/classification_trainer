@@ -33,7 +33,7 @@ from classification_trainer.helpers.reporting_helper import (
 )
 from classification_trainer.helpers.tokenizer_helper import load_tokenizer_from_hf
 from classification_trainer.helpers.training_helper import create_trainer, load_base_model, run_training
-from classification_trainer.helpers.wandb_helper import initialize_wandb, suppress_wandb_finish
+from classification_trainer.helpers.wandb_helper import initialize_wandb
 from classification_trainer.protocols import CommmandProtocol, LoggingProtocol
 from classification_trainer.protocols.metric_reporting_protocol import MetricsReportingProtocol
 from classification_trainer.protocols.metric_result import MetricResult
@@ -167,9 +167,7 @@ class TrainCommand(CommmandProtocol):
             )
 
             logger.report_message("[blue]Training...[/blue]")
-            train_ctx = suppress_wandb_finish() if wandb_enabled else nullcontext()
-            with train_ctx:
-                self.train_model(model, tokenizer, data_splits.training_dataset, data_splits.validation_dataset)
+            self.train_model(model, tokenizer, data_splits.training_dataset, data_splits.validation_dataset)
 
             logger.report_message("[blue]Post-Run Assessment...[/blue]")
             post_run_results: list[MetricResult] = self.test_model(

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from unsloth import FastLanguageModel  # isort: skip
+from contextlib import nullcontext
 from typing import Any, cast
 
 from datasets import Dataset
@@ -18,6 +19,7 @@ from unsloth.chat_templates import train_on_responses_only
 
 from classification_trainer.configuration import BaseModelInfo, DatasetInfo, TrainingInfo
 from classification_trainer.configuration.chat_template_info import ChatTemplateInfo
+from classification_trainer.helpers.wandb_helper import suppress_wandb_finish
 
 
 class _NoFinishWandbCallback(WandbCallback):
@@ -101,7 +103,11 @@ def create_trainer(
 
 
 def run_training(trainer: SFTTrainer, model: PreTrainedModel) -> TrainOutput:
+    import wandb
+
     model.train()
     FastLanguageModel.for_training(model)
-    training_output = cast(TrainOutput, trainer.train())
+    ctx = suppress_wandb_finish() if wandb.run is not None else nullcontext()
+    with ctx:
+        training_output = cast(TrainOutput, trainer.train())
     return training_output  # pyright: ignore
