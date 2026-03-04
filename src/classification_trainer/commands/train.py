@@ -123,31 +123,31 @@ class TrainCommand(CommmandProtocol):
         )
 
     def execute(self, logger: LoggingProtocol) -> None:
-        logger.report_message("Loading Tokenizer...")
+        logger.report_message("[blue]Loading Tokenizer...[/blue]")
         tokenizer: PreTrainedTokenizerBase = load_tokenizer_from_hf(self.base_model_info)
 
         logger.add_break()
-        logger.report_message("Loading Datasets")
+        logger.report_message("[blue]Loading Datasets...[/blue]")
         datasets: DatasetDict = load_dataset_from_hf(self.dataset_info)
         datasets, self.dataset_info = self.extract_splits(datasets)
         data_splits = self.extract_prepared_datasets(datasets, tokenizer)
 
         logger.add_break()
-        logger.report_message("Loading base model...")
+        logger.report_message("[blue]Loading base model...[/blue]")
         model, tokenizer = load_base_model(self.base_model_info, self.training_info)
 
         logger.add_break()
-        logger.report_message("Pre Training Assessment...")
+        logger.report_message("[blue]Pre Training Assessment...[/blue]")
         metric_creators: list[MetricProtocol] = list(get_metrics_from_inference_info(self.inference_info))
         pre_run_results: list[MetricResult] = self.test_model(
             model, tokenizer, data_splits.test_dataset, metric_creators, logger
         )
         logger.add_break()
-        logger.report_message("Training")
+        logger.report_message("[blue]Training...[/blue]")
         self.train_model(model, tokenizer, data_splits.training_dataset, data_splits.validation_dataset)
 
         logger.add_break()
-        logger.report_message("Post-Run Assessment...")
+        logger.report_message("[blue]Post-Run Assessment...[/blue]")
         post_run_results: list[MetricResult] = self.test_model(
             model, tokenizer, data_splits.test_dataset, metric_creators, logger
         )

@@ -1,6 +1,7 @@
 from collections.abc import Iterable
 from dataclasses import dataclass
 
+import wandb
 from classification_trainer.protocols import MetricResult, MetricsReportingProtocol
 from classification_trainer.protocols.logging_protocol import LoggingProtocol
 
@@ -15,3 +16,19 @@ class LoggerMetricsReporter(MetricsReportingProtocol):
             headers=["metric", "result"],
             rows=[[r.metric_name, str(r.metric_result)] for r in result_list],
         )
+
+
+@dataclass
+class WandBMetricsReporter(MetricsReportingProtocol):
+    def report(self, results: Iterable[MetricResult]) -> None:
+        wandb.log({result.metric_name: result.metric_result for result in results})
+
+
+@dataclass
+class CompositeMetricsReporter(MetricsReportingProtocol):
+    reporters: list[MetricsReportingProtocol]
+
+    def report(self, results: Iterable[MetricResult]) -> None:
+        result_list = list(results)
+        for reporter in self.reporters:
+            reporter.report(result_list)
