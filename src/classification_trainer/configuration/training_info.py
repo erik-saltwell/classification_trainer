@@ -10,6 +10,7 @@ from classification_trainer.configuration.dataset_info import DatasetInfo
 from classification_trainer.utils import FragmentID, get_fragment
 
 from .sft_parameters import SFTParameters
+from .wandb_config import WandbConfig
 
 
 class TrainingLengthType(StrEnum):
@@ -42,6 +43,7 @@ class TrainingInfo(BaseModel):
     evaluation_steps: int = 50
     evaluation_enabled: bool = True
     greater_is_better: bool = False
+    wandb_config: WandbConfig | None = None
 
     @property
     def load_best_model_at_end(self) -> bool:

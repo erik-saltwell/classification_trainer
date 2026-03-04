@@ -1,3 +1,5 @@
+from contextlib import nullcontext
+
 from attr import dataclass
 from datasets import Dataset, DatasetDict
 from transformers import PreTrainedModel, PreTrainedTokenizerBase
@@ -24,9 +26,16 @@ from classification_trainer.helpers.inference_helper import (
     add_inferred_column,
     setup_unsloth_inference,
 )
+from classification_trainer.helpers.reporting_helper import (
+    CompositeMetricsReporter,
+    LoggerMetricsReporter,
+    WandBMetricsReporter,
+)
 from classification_trainer.helpers.tokenizer_helper import load_tokenizer_from_hf
 from classification_trainer.helpers.training_helper import create_trainer, load_base_model, run_training
+from classification_trainer.helpers.wandb_helper import initialize_wandb, suppress_wandb_finish
 from classification_trainer.protocols import CommmandProtocol, LoggingProtocol
+from classification_trainer.protocols.metric_reporting_protocol import MetricsReportingProtocol
 from classification_trainer.protocols.metric_result import MetricResult
 
 
@@ -77,6 +86,7 @@ class TrainCommand(CommmandProtocol):
         dataset: Dataset,
         metric_creators: list[MetricProtocol],
         logger: LoggingProtocol,
+        reporter: MetricsReportingProtocol,
     ) -> list[MetricResult]:
         model, tokenizer = setup_unsloth_inference(model, tokenizer, self.inference_info)
         chat_template: ChatTemplateInfo = self.base_model_info.chat_template_info
@@ -86,6 +96,7 @@ class TrainCommand(CommmandProtocol):
         dataset = add_classification_result_column(self.dataset_info, dataset)
         counts: ClassificationCounts = collect_classification_counts(self.dataset_info, dataset)
         return_value = list(generate_metrics(counts, metric_creators))
+        reporter.report(return_value)
         return return_value
 
     def train_model(
@@ -102,7 +113,7 @@ class TrainCommand(CommmandProtocol):
             model,
             tokenizer,
             training_dataset,
-            False,
+            self.training_info.wandb_config is not None,
             validation_dataset,
         )
         run_training(trainer, model)
@@ -123,34 +134,52 @@ class TrainCommand(CommmandProtocol):
         )
 
     def execute(self, logger: LoggingProtocol) -> None:
-        logger.report_message("[blue]Loading Tokenizer...[/blue]")
-        tokenizer: PreTrainedTokenizerBase = load_tokenizer_from_hf(self.base_model_info)
+        wandb_enabled = self.training_info.wandb_config is not None
+        ctx = initialize_wandb(self.training_info) if wandb_enabled else nullcontext()
+        with ctx:
+            logger.report_message("[blue]Loading Tokenizer...[/blue]")
+            tokenizer: PreTrainedTokenizerBase = load_tokenizer_from_hf(self.base_model_info)
 
-        logger.add_break()
-        logger.report_message("[blue]Loading Datasets...[/blue]")
-        datasets: DatasetDict = load_dataset_from_hf(self.dataset_info)
-        datasets, self.dataset_info = self.extract_splits(datasets)
-        data_splits = self.extract_prepared_datasets(datasets, tokenizer)
+            logger.report_message("[blue]Loading Datasets...[/blue]")
+            datasets: DatasetDict = load_dataset_from_hf(self.dataset_info)
+            datasets, self.dataset_info = self.extract_splits(datasets)
+            data_splits = self.extract_prepared_datasets(datasets, tokenizer)
 
-        logger.add_break()
-        logger.report_message("[blue]Loading base model...[/blue]")
-        model, tokenizer = load_base_model(self.base_model_info, self.training_info)
+            logger.report_message("[blue]Loading base model...[/blue]")
+            model, tokenizer = load_base_model(self.base_model_info, self.training_info)
 
-        logger.add_break()
-        logger.report_message("[blue]Pre Training Assessment...[/blue]")
-        metric_creators: list[MetricProtocol] = list(get_metrics_from_inference_info(self.inference_info))
-        pre_run_results: list[MetricResult] = self.test_model(
-            model, tokenizer, data_splits.test_dataset, metric_creators, logger
-        )
-        logger.add_break()
-        logger.report_message("[blue]Training...[/blue]")
-        self.train_model(model, tokenizer, data_splits.training_dataset, data_splits.validation_dataset)
+            metric_creators: list[MetricProtocol] = list(get_metrics_from_inference_info(self.inference_info))
 
-        logger.add_break()
-        logger.report_message("[blue]Post-Run Assessment...[/blue]")
-        post_run_results: list[MetricResult] = self.test_model(
-            model, tokenizer, data_splits.test_dataset, metric_creators, logger
-        )
+            pre_reporters: list[MetricsReportingProtocol] = [LoggerMetricsReporter(logger)]
+            post_reporters: list[MetricsReportingProtocol] = [LoggerMetricsReporter(logger)]
+            if wandb_enabled:
+                pre_reporters.append(WandBMetricsReporter(prefix="pre_train/"))
+                post_reporters.append(WandBMetricsReporter(prefix="post_train/"))
 
-        logger.add_break()
-        self.report_results(pre_run_results, post_run_results, logger)
+            logger.report_message("[blue]Pre Training Assessment...[/blue]")
+            pre_run_results: list[MetricResult] = self.test_model(
+                model,
+                tokenizer,
+                data_splits.test_dataset,
+                metric_creators,
+                logger,
+                CompositeMetricsReporter(pre_reporters),
+            )
+
+            logger.report_message("[blue]Training...[/blue]")
+            train_ctx = suppress_wandb_finish() if wandb_enabled else nullcontext()
+            with train_ctx:
+                self.train_model(model, tokenizer, data_splits.training_dataset, data_splits.validation_dataset)
+
+            logger.report_message("[blue]Post-Run Assessment...[/blue]")
+            post_run_results: list[MetricResult] = self.test_model(
+                model,
+                tokenizer,
+                data_splits.test_dataset,
+                metric_creators,
+                logger,
+                CompositeMetricsReporter(post_reporters),
+            )
+
+            logger.add_break()
+            self.report_results(pre_run_results, post_run_results, logger)

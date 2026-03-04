@@ -1,5 +1,18 @@
 # Future Work
 
+## F1 - Allow reporting via wandb
+- update training command to do wandb training
+- implement metric reporting to use wandb
+- check it works
+- make sure that pre and post training have different prefixes
+
+## F2 - Sweeps
+
+
+## F3 Code to save best model version to hugging face in regular and gguf format
+
+
+
 ## E2/R2 — Test training and evaluation batch sizes independently
 
 Training stores activations for the backward pass; eval only needs a forward pass. These have

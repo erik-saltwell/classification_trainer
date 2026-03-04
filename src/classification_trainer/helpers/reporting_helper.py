@@ -20,8 +20,10 @@ class LoggerMetricsReporter(MetricsReportingProtocol):
 
 @dataclass
 class WandBMetricsReporter(MetricsReportingProtocol):
+    prefix: str = ""
+
     def report(self, results: Iterable[MetricResult]) -> None:
-        wandb.log({result.metric_name: result.metric_result for result in results})
+        wandb.log({f"{self.prefix}{r.metric_name}": r.metric_result for r in results})
 
 
 @dataclass

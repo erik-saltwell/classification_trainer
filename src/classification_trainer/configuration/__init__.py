@@ -4,6 +4,7 @@ from .dataset_info import DatasetInfo, load_dataset_info
 from .inference_info import InferenceInfo, load_inference_info
 from .sft_parameters import LRSchedulerType, OptimizerType, SFTParameters
 from .training_info import TrainingInfo, TrainingLengthType, load_training_info
+from .wandb_config import WandbConfig
 
 __all__ = [
     "BaseModelInfo",
@@ -20,4 +21,5 @@ __all__ = [
     "TrainingLengthType",
     "InferenceInfo",
     "load_inference_info",
+    "WandbConfig",
 ]

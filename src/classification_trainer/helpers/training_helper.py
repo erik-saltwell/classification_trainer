@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 from unsloth import FastLanguageModel  # isort: skip
-from typing import cast
+from typing import Any, cast
 
 from datasets import Dataset
 from transformers import (
     PreTrainedModel,
     PreTrainedTokenizerBase,
+    TrainingArguments,
 )
+from transformers.integrations.integration_utils import WandbCallback
+from transformers.trainer_callback import TrainerControl, TrainerState
 from transformers.trainer_utils import TrainOutput
 from trl.trainer.sft_config import SFTConfig
 from trl.trainer.sft_trainer import SFTTrainer
@@ -15,6 +18,21 @@ from unsloth.chat_templates import train_on_responses_only
 
 from classification_trainer.configuration import BaseModelInfo, DatasetInfo, TrainingInfo
 from classification_trainer.configuration.chat_template_info import ChatTemplateInfo
+
+
+class _NoFinishWandbCallback(WandbCallback):
+    """WandbCallback that skips finish() — the caller owns the run lifecycle."""
+
+    def on_train_end(
+        self,
+        args: TrainingArguments,
+        state: TrainerState,
+        control: TrainerControl,
+        model: Any = None,
+        processing_class: Any = None,
+        **kwargs: Any,
+    ) -> None:
+        pass
 
 
 def load_base_model(
@@ -68,6 +86,9 @@ def create_trainer(
         eval_dataset=eval_dataset,
         args=config,
     )
+    if report_to_wandb:
+        trainer.remove_callback(WandbCallback)
+        trainer.add_callback(_NoFinishWandbCallback())
     if training_info.train_on_outputs_only:
         chat_template_info: ChatTemplateInfo = base_model_info.chat_template_info
 
