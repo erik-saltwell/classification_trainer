@@ -126,21 +126,31 @@ class TrainCommand(CommmandProtocol):
         logger.report_message("Loading Tokenizer...")
         tokenizer: PreTrainedTokenizerBase = load_tokenizer_from_hf(self.base_model_info)
 
+        logger.add_break()
         logger.report_message("Loading Datasets")
         datasets: DatasetDict = load_dataset_from_hf(self.dataset_info)
         datasets, self.dataset_info = self.extract_splits(datasets)
         data_splits = self.extract_prepared_datasets(datasets, tokenizer)
 
+        logger.add_break()
         logger.report_message("Loading base model...")
         model, tokenizer = load_base_model(self.base_model_info, self.training_info)
 
+        logger.add_break()
         logger.report_message("Pre Training Assessment...")
         metric_creators: list[MetricProtocol] = list(get_metrics_from_inference_info(self.inference_info))
         pre_run_results: list[MetricResult] = self.test_model(
             model, tokenizer, data_splits.test_dataset, metric_creators, logger
         )
+        logger.add_break()
+        logger.report_message("Training")
         self.train_model(model, tokenizer, data_splits.training_dataset, data_splits.validation_dataset)
+
+        logger.add_break()
+        logger.report_message("Post-Run Assessment...")
         post_run_results: list[MetricResult] = self.test_model(
             model, tokenizer, data_splits.test_dataset, metric_creators, logger
         )
+
+        logger.add_break()
         self.report_results(pre_run_results, post_run_results, logger)

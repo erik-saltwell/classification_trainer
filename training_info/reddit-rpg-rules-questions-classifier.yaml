@@ -2,7 +2,7 @@ model_name: "reddit-rpg-rules-questions-classifier"
 hugging_face_user_name: "eriksalt"
 system_prompt_name: "rpg_post_classification_prompt.md"
 training_length_type: "epoch"
-training_length: 1.0
+training_length: 3.0
 max_sequence_length: 1536
 per_device_batch_size: 4
 gradient_accumulation_steps: 4

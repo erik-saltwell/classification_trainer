@@ -23,12 +23,14 @@
             "args": [
                 "train",
                 "--dataset",
-                "imdb",
+                "rpg_reddit_post_classification",
                 "--base-model",
                 "qwen2.5-1.5b-instruct",
                 "--training-info",
-                "imdb",
+                "reddit-rpg-rules-questions-classifier",
                 "--run-comparison-before-training",
+                "--inference-info",
+                "simple_classification"
             ]
         },
         {
