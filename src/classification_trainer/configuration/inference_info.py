@@ -20,7 +20,9 @@ class InferenceInfo(BaseModel):
 
     # If you're using Unsloth, flip fast inference mode before generate
     prepare_unsloth_inference: bool = True
-
+    padding_side: str = "left"
+    ensure_pad_token: bool = True
+    set_model_pad_token_id: bool = True
     metrics: tuple[str, ...] = ("accuracy", "precision", "recall", "f1", "total_seen")
 
 

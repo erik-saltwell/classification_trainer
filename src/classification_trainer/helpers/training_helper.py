@@ -79,8 +79,8 @@ def create_trainer(
     return trainer
 
 
-def run_training(
-    trainer: SFTTrainer,
-) -> TrainOutput:
+def run_training(trainer: SFTTrainer, model: PreTrainedModel) -> TrainOutput:
+    model.train()
+    FastLanguageModel.for_training(model)
     training_output = cast(TrainOutput, trainer.train())
     return training_output  # pyright: ignore

@@ -53,7 +53,7 @@ def find_max_batch_size(
                 eval_dataset=eval_dataset,
             )
             logger.report_message(f"Probing Batch Size: {candidate}")
-            run_training(trainer)
+            run_training(trainer, model)
             del trainer
             flush_gpu_memory()
             last_good = candidate

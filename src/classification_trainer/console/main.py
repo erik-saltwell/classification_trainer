@@ -15,6 +15,7 @@ from classification_trainer.commands.compute_batch_size import ComputeBatchSizeC
 from classification_trainer.commands.test import TestCommand
 from classification_trainer.commands.train import TrainCommand
 from classification_trainer.configuration import load_base_model_info, load_dataset_info, load_training_info
+from classification_trainer.configuration.inference_info import load_inference_info
 from classification_trainer.utils.logging_config import configure_logging
 
 from .console_validation import load_config_or_exit
@@ -60,6 +61,7 @@ def train(
     dataset_info: Annotated[str, typer.Option("--dataset", help="Dataset info yaml name (no extension)")],
     base_model_info: Annotated[str, typer.Option("--base-model", help="Base model info yaml name (no extension)")],
     training_info: Annotated[str, typer.Option("--training-info", help="Training info yaml name (no extension)")],
+    inference_info: Annotated[str, typer.Option("--inference-info", help="Inference info yaml name (no extension)")],
     run_comparison_before_training: Annotated[
         bool,
         typer.Option(
@@ -73,12 +75,14 @@ def train(
     ds_info = load_config_or_exit(load_dataset_info, dataset_info, "dataset info", console)
     bm_info = load_config_or_exit(load_base_model_info, base_model_info, "base model info", console)
     tr_info = load_config_or_exit(load_training_info, training_info, "training info", console)
+    inf_info = load_config_or_exit(load_inference_info, inference_info, "inference info", console)
 
     TrainCommand(
         dataset_info=ds_info,
         base_model_info=bm_info,
         training_info=tr_info,
         run_comparison_before_training=run_comparison_before_training,
+        inference_info=inf_info,
     ).execute(logger=logger)
 
 

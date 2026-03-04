@@ -207,12 +207,7 @@ def add_inferred_column(
 
 
 def setup_unsloth_inference(
-    model: PreTrainedModel,
-    tokenizer: PreTrainedTokenizerBase,
-    padding_side: str = "left",
-    ensure_pad_token: bool = True,
-    run_unsloth_for_inference: bool = True,
-    set_model_pad_token_id: bool = True,
+    model: PreTrainedModel, tokenizer: PreTrainedTokenizerBase, inference_info: InferenceInfo
 ) -> tuple[PreTrainedModel, PreTrainedTokenizerBase]:
     """
     One-time inference setup for decoder-only / Unsloth models.
@@ -229,24 +224,24 @@ def setup_unsloth_inference(
     model.eval()
 
     # Apply Unsloth inference patch once (safe no-op if already applied)
-    if run_unsloth_for_inference:
+    if inference_info.prepare_unsloth_inference:
         patched = FastLanguageModel.for_inference(model)  # may return model or None
         if patched is not None:
             model = patched
-
+    padding_side = inference_info.padding_side
     # Tokenizer padding behavior for batched decoder-only generation
     if padding_side not in ("left", "right"):
         raise ValueError(f"padding_side must be 'left' or 'right', got: {padding_side!r}")
     tokenizer.padding_side = padding_side
 
     # Ensure a pad token exists (HF generate() wants pad_token_id for batched inputs)
-    if ensure_pad_token and tokenizer.pad_token is None:
+    if inference_info.ensure_pad_token and tokenizer.pad_token is None:
         if tokenizer.eos_token is None:
             raise ValueError("Tokenizer has no pad_token and no eos_token; cannot auto-assign pad_token.")
         tokenizer.pad_token = tokenizer.eos_token
 
     # Keep model configs consistent with tokenizer (helps avoid warnings / edge cases)
-    if set_model_pad_token_id:
+    if inference_info.set_model_pad_token_id:
         pad_id = tokenizer.pad_token_id
         if pad_id is not None:
             if getattr(model.config, "pad_token_id", None) is None:

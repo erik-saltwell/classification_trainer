@@ -84,8 +84,9 @@ class TestCommand(CommmandProtocol):
         )
         test_dataset = add_eval_column(self.dataset_info, self.training_info, test_dataset, tokenizer)
         model, tokenizer = load_base_model(self.base_model_info, self.training_info)
-        model, tokenizer = setup_unsloth_inference(model, tokenizer)
         inference_info: InferenceInfo = InferenceInfo()
+        model, tokenizer = setup_unsloth_inference(model, tokenizer, inference_info)
+
         chat_template: ChatTemplateInfo = self.base_model_info.chat_template_info
         test_dataset = add_inferred_column(
             test_dataset,
@@ -121,10 +122,11 @@ class TestCommand(CommmandProtocol):
             self.base_model_info.chat_template_info,
             True,
         )
+        inference_info: InferenceInfo = InferenceInfo()
         test_dataset = add_eval_column(self.dataset_info, self.training_info, test_dataset, tokenizer)
         model, tokenizer = load_base_model(self.base_model_info, self.training_info)
-        model, tokenizer = setup_unsloth_inference(model, tokenizer)
-        inference_info: InferenceInfo = InferenceInfo()
+        model, tokenizer = setup_unsloth_inference(model, tokenizer, inference_info)
+
         chat_template: ChatTemplateInfo = self.base_model_info.chat_template_info
         prompt_col = self.dataset_info.evaluation_instructions_column_name
 
