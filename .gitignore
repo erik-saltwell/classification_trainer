@@ -247,3 +247,6 @@ imdb-classifier/
 reddit-rpg-rules-questions-classifier/
 llama.cpp/
 llama.cpp
+
+output_models/
+Modelfile
