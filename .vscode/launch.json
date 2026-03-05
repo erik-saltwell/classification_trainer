@@ -30,7 +30,23 @@
                 "reddit-rpg-rules-questions-classifier",
                 "--run-comparison-before-training",
                 "--inference-info",
-                "simple_classification"
+                "simple_classification",
+                "--publishing-info",
+                "reddit-rpg-rules-question-classifier",
+            ]
+        },
+        {
+            "name": "--publish",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "classification_trainer",
+            "console": "integratedTerminal",
+            "args": [
+                "publish",
+                "--training-info",
+                "reddit-rpg-rules-questions-classifier",
+                "--publishing-info",
+                "reddit-rpg-rules-question-classifier",
             ]
         },
         {

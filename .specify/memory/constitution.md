@@ -1,21 +1,20 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: (none) → 1.0.0 (initial ratification from blank template)
-Modified principles: N/A (first version)
-Added sections:
-  - Core Principles (5 principles derived from codebase analysis)
-  - Technology Stack
-  - Development Workflow
-  - Governance
-Removed sections: N/A
+Version change: 1.0.0 → 1.1.0
+Modified principles:
+  - I. Configuration-First: expanded to include CommonPaths as mandatory path registry
+Added sections: none
+Removed sections: none
 Templates requiring updates:
-  - .specify/templates/plan-template.md ✅ Constitution Check gates align with principles below
-  - .specify/templates/spec-template.md ✅ No conflicts; acceptance criteria pattern matches FR/SC format
-  - .specify/templates/tasks-template.md ✅ Phase/parallel structure consistent with principle III
-  - .specify/templates/constitution-template.md ✅ Source template unchanged (this is the filled instance)
+  - .specify/templates/plan-template.md ✅ Constitution Check gates still align
+  - .specify/templates/spec-template.md ✅ No conflicts
+  - .specify/templates/tasks-template.md ✅ No conflicts
+  - .specify/templates/constitution-template.md ✅ Source template unchanged
 Follow-up TODOs:
   - TODO(RATIFICATION_DATE): Exact project start date unknown; marked as project inception estimate.
+  - plan.md for 001-model-save-publish should be updated to reflect CommonPaths requirement
+    explicitly in Phase 1 design notes.
 -->
 
 # Classification Trainer Constitution
@@ -30,8 +29,18 @@ MUST be declared in YAML files loaded and validated by Pydantic models
 No training-relevant parameters may be hardcoded in command or helper modules.
 YAML files live under `training_info/`, `dataset_info/`, and `base_model_info/` directories.
 
+All project-known directory paths MUST be declared as constants and properties in
+`utils/common_paths.py` (`CommonPaths`). No module outside `common_paths.py` may
+hard-code or construct a project directory path independently. Any new feature that
+introduces a new directory (e.g., `publishing_info/`, `output_models/`) MUST add the
+corresponding constant, property, and — if it is a config directory that should always
+exist — a call in `ensure_all_dirs_exist()`. Runtime-only output directories MUST be
+exposed as a property but MUST NOT be auto-created by `ensure_all_dirs_exist()`.
+
 **Rationale**: Reproducible experiments require that every run be fully described by its
-config files. Hardcoded values create invisible experiment variance and undermine auditability.
+config files and that all path references resolve from a single authoritative registry.
+Scattered path strings create silent breakage when directories are reorganised and
+undermine auditability.
 
 ### II. Protocol-Based Interfaces
 
@@ -91,6 +100,8 @@ than a generalized framework. Scope creep degrades reliability.
 - **Dataset source**: HuggingFace Hub (`datasets` library)
 - **Chat templates**: ChatML (response separator: `<|im_start|>assistant\n`)
 - **Quantization**: 4-bit QLoRA via `load_in_4bit=True` (default); LoftQ optional
+- **Path registry**: `utils/common_paths.py` (`CommonPaths`) — single source of truth for
+  all project directory paths
 
 New dependencies MUST be justified against an existing dependency's capabilities before
 introduction. GPU memory efficiency MUST be considered for any change touching training
@@ -99,6 +110,9 @@ or inference code.
 ## Development Workflow
 
 - New features begin with a YAML config change or a new config model — not with code.
+- Any new feature directory MUST be registered in `CommonPaths` before any code references it.
+  Config directories are added to `ensure_all_dirs_exist()`; runtime output directories
+  are exposed as properties only.
 - Protocol definitions (`protocols/`) MUST be updated before implementing code that
   depends on the new interface contract.
 - Known training pitfalls (e.g., `eval_loss = NaN` when `train_on_outputs_only=True`
@@ -112,10 +126,11 @@ or inference code.
 
 This constitution supersedes all other coding conventions for this project.
 Amendments require: (1) a documented rationale, (2) version bump per semantic versioning
-rules (MAJOR: principle removal/redefinition; MINOR: new principle/section; PATCH:
-clarification/wording), (3) update of this file and propagation to dependent templates.
+rules (MAJOR: principle removal/redefinition; MINOR: new principle/section or materially
+expanded mandatory guidance; PATCH: clarification/wording), (3) update of this file and
+propagation to dependent templates.
 All PRs that touch `helpers/`, `commands/`, or `configuration/` MUST include a
 constitution compliance check. Use `.specify/memory/MEMORY.md` and
 `.claude/projects/…/memory/MEMORY.md` for runtime development guidance.
 
-**Version**: 1.0.0 | **Ratified**: TODO(RATIFICATION_DATE): project inception date unknown | **Last Amended**: 2026-03-05
+**Version**: 1.1.0 | **Ratified**: TODO(RATIFICATION_DATE): project inception date unknown | **Last Amended**: 2026-03-05

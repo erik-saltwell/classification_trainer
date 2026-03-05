@@ -8,13 +8,20 @@ from typing import Annotated
 
 import typer
 from dotenv import load_dotenv
+from huggingface_hub.errors import HfHubHTTPError
 from rich.console import Console
 
 from classification_trainer.commands.analyze_dataset import AnalyzeDatasetCommand
 from classification_trainer.commands.compute_batch_size import ComputeBatchSizeCommand
+from classification_trainer.commands.publish import PublishCommand
 from classification_trainer.commands.test import TestCommand
 from classification_trainer.commands.train import TrainCommand
-from classification_trainer.configuration import load_base_model_info, load_dataset_info, load_training_info
+from classification_trainer.configuration import (
+    load_base_model_info,
+    load_dataset_info,
+    load_publishing_info,
+    load_training_info,
+)
 from classification_trainer.configuration.inference_info import load_inference_info
 from classification_trainer.utils.logging_config import configure_logging
 
@@ -62,6 +69,10 @@ def train(
     base_model_info: Annotated[str, typer.Option("--base-model", help="Base model info yaml name (no extension)")],
     training_info: Annotated[str, typer.Option("--training-info", help="Training info yaml name (no extension)")],
     inference_info: Annotated[str, typer.Option("--inference-info", help="Inference info yaml name (no extension)")],
+    publishing_info: Annotated[
+        str | None,
+        typer.Option("--publishing-info", help="Publishing info yaml name (no extension)"),
+    ] = None,
     run_comparison_before_training: Annotated[
         bool,
         typer.Option(
@@ -76,6 +87,11 @@ def train(
     bm_info = load_config_or_exit(load_base_model_info, base_model_info, "base model info", console)
     tr_info = load_config_or_exit(load_training_info, training_info, "training info", console)
     inf_info = load_config_or_exit(load_inference_info, inference_info, "inference info", console)
+    pub_info = (
+        load_config_or_exit(load_publishing_info, publishing_info, "publishing info", console)
+        if publishing_info is not None
+        else None
+    )
 
     TrainCommand(
         dataset_info=ds_info,
@@ -83,7 +99,35 @@ def train(
         training_info=tr_info,
         run_comparison_before_training=run_comparison_before_training,
         inference_info=inf_info,
+        publishing_info=pub_info,
     ).execute(logger=logger)
+
+
+@app.command("publish")
+def publish(
+    training_info: Annotated[str, typer.Option("--training-info", help="Training info yaml name (no extension)")],
+    publishing_info: Annotated[str, typer.Option("--publishing-info", help="Publishing info yaml name (no extension)")],
+) -> None:
+    console = Console()
+    logger: RichConsoleLogger = RichConsoleLogger(console)
+
+    tr_info = load_config_or_exit(load_training_info, training_info, "training info", console)
+    pub_info = load_config_or_exit(load_publishing_info, publishing_info, "publishing info", console)
+
+    try:
+        PublishCommand(training_info=tr_info, publishing_info=pub_info).execute(logger=logger)
+    except HfHubHTTPError as exc:
+        if exc.response is not None and exc.response.status_code == 401:
+            console.print(
+                "[red]Error:[/red] HuggingFace authentication failed.\n"
+                "Set a valid token via the HF_TOKEN environment variable or run `huggingface-cli login`."
+            )
+        else:
+            console.print(f"[red]HuggingFace Hub error:[/red] {exc}")
+        raise typer.Exit(code=1) from None
+    except RuntimeError as exc:
+        console.print(f"[red]Error:[/red] {exc}")
+        raise typer.Exit(code=1) from None
 
 
 @app.command("compute-batch-size")

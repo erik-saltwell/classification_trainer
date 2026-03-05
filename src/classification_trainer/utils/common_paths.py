@@ -16,6 +16,8 @@ class CommonPaths:
     TRAINING_INFO_DIR: Path = Path("training_info")
     CHAT_TEMPLATE_INFO_DIR: Path = Path("chat_template_info")
     INFERENCE_INFO_DIR: Path = Path("inference_info")
+    PUBLISHING_INFO_DIR: Path = Path("publishing_info")
+    OUTPUT_MODELS_DIR: Path = Path("output_models")
 
     def __post_init__(self):
         """Create all required directories on initialization."""
@@ -42,6 +44,14 @@ class CommonPaths:
     def inference_info(self) -> Path:
         return CommonPaths.INFERENCE_INFO_DIR
 
+    @property
+    def publishing_info(self) -> Path:
+        return CommonPaths.PUBLISHING_INFO_DIR
+
+    @property
+    def output_models(self) -> Path:
+        return CommonPaths.OUTPUT_MODELS_DIR
+
     def outputs(self, target_model_name: Path) -> Path:
         """Return the outputs directory path for the current target mode."""
         return CommonPaths.OUTPUTS_DIR / target_model_name
@@ -58,6 +68,7 @@ class CommonPaths:
         self.base_model_info.mkdir(parents=True, exist_ok=True)
         self.training_info.mkdir(parents=True, exist_ok=True)
         self.chat_template_info.mkdir(parents=True, exist_ok=True)
+        self.publishing_info.mkdir(parents=True, exist_ok=True)
 
     @staticmethod
     def get() -> CommonPaths:

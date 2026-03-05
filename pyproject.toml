@@ -62,6 +62,7 @@ dependencies = [
 ]
 
 
+
 [project.scripts]
 classification-trainer = "classification_trainer.console:main.app"
 
@@ -115,6 +116,7 @@ exclude = [
     "^\\.venv/",
     "venv",
     "unsloth_compiled_cache",
+    "llama.cpp/",
 ]
 
 # Reasonable signal without going full-strict
@@ -148,4 +150,5 @@ exclude = [
     "**/.cache/**",
     "**/build/**",
     "**/dist/**",
+    "**/llama.cpp/**",
 ]
