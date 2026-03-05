@@ -150,6 +150,12 @@ class TrainCommand(CommmandProtocol):
             datasets: DatasetDict = load_dataset_from_hf(self.dataset_info)
             datasets, self.dataset_info = self.extract_splits(datasets)
             data_splits = self.extract_prepared_datasets(datasets, tokenizer)
+            logger.report_message(
+                "[green]Split Counts:"
+                + f"{len(data_splits.training_dataset)} training, "
+                + f"{len(data_splits.validation_dataset)} validation, "
+                + f"{len(data_splits.test_dataset)} test[/green]"
+            )
 
             logger.report_message("[blue]Loading base model...[/blue]")
             model, tokenizer = load_base_model(self.base_model_info, self.training_info)
