@@ -34,5 +34,5 @@ def extract_target_metric(results: list[MetricResult], metric_name: str) -> floa
     """
     for result in results:
         if result.metric_name == metric_name:
-            return result.metric_result
+            return float(result.metric_result)
     raise ValueError(f"Metric '{metric_name}' not found in results. Available: {[r.metric_name for r in results]}")
