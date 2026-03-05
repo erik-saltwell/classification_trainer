@@ -70,9 +70,9 @@ one repository per format, using the saved model card.
 
 ### Implementation for User Story 2
 
-- [ ] T010 [US2] Implement `publish_model(training_info: TrainingInfo, publishing_info: PublishingInfo, logger: LoggingProtocol) -> None` in `src/classification_trainer/helpers/publishing_helper.py`: iterate enabled publish formats (lora/gguf/merged) — for each: compute `save_dir = CommonPaths.get().output_models / training_info.model_name / slug`; fail clearly if save_dir or `README.md` missing; compute `repo_id = f"{training_info.hugging_face_user_name}/{training_info.model_name}-{slug}"`; call `HfApi().create_repo(repo_id=repo_id, repo_type="model", exist_ok=True, private=True)` then `HfApi().upload_folder(...)`; log progress per format; collect all failures and report at end. For gguf, uploads the entire `gguf/` directory (all quant files + README.md) to the single `<model>-gguf` repo.
-- [ ] T011 [US2] Create `src/classification_trainer/commands/publish.py`: define `PublishCommand` as an `@dataclass` implementing `CommmandProtocol`; fields: `training_info: TrainingInfo`, `publishing_info: PublishingInfo`; `execute(self, logger: LoggingProtocol) -> None` calls `publishing_helper.publish_model(self.training_info, self.publishing_info, logger)` with appropriate log messages before and after
-- [ ] T012 [US2] Register a `publish` CLI command in `src/classification_trainer/console/main.py`: add `@app.command("publish")` function with required `--training-info` and `--publishing-info` options; load both configs with `load_config_or_exit`; instantiate and execute `PublishCommand`; add `PublishCommand` to imports
+- [x] T010 [US2] Implement `publish_model(training_info: TrainingInfo, publishing_info: PublishingInfo, logger: LoggingProtocol) -> None` in `src/classification_trainer/helpers/publishing_helper.py`: iterate enabled publish formats (lora/gguf/merged) — for each: compute `save_dir = CommonPaths.get().output_models / training_info.model_name / slug`; fail clearly if save_dir or `README.md` missing; compute `repo_id = f"{training_info.hugging_face_user_name}/{training_info.model_name}-{slug}"`; call `HfApi().create_repo(repo_id=repo_id, repo_type="model", exist_ok=True, private=True)` then `HfApi().upload_folder(...)`; log progress per format; collect all failures and report at end. For gguf, uploads the entire `gguf/` directory (all quant files + README.md) to the single `<model>-gguf` repo.
+- [x] T011 [US2] Create `src/classification_trainer/commands/publish.py`: define `PublishCommand` as an `@dataclass` implementing `CommmandProtocol`; fields: `training_info: TrainingInfo`, `publishing_info: PublishingInfo`; `execute(self, logger: LoggingProtocol) -> None` calls `publishing_helper.publish_model(self.training_info, self.publishing_info, logger)` with appropriate log messages before and after
+- [x] T012 [US2] Register a `publish` CLI command in `src/classification_trainer/console/main.py`: add `@app.command("publish")` function with required `--training-info` and `--publishing-info` options; load both configs with `load_config_or_exit`; instantiate and execute `PublishCommand`; add `PublishCommand` to imports
 
 **Checkpoint**: User Stories 1 and 2 are both independently functional.
 
@@ -87,8 +87,8 @@ YAML provides a working template.
 
 ### Implementation for User Story 3
 
-- [ ] T013 [US3] Verify `PublishingInfo` in `src/classification_trainer/configuration/publishing_info.py` produces clear Pydantic validation errors for unknown fields (already handled by Pydantic's `extra = "forbid"` or default strict mode); add `model_config = ConfigDict(frozen=True, extra="forbid")` so unknown YAML keys are rejected with a clear field name in the error message
-- [ ] T014 [P] [US3] Create `publishing_info/example.yaml` with all fields populated and inline comments explaining each flag, the `gguf_quantizations` list, and when to enable each format
+- [x] T013 [US3] Verify `PublishingInfo` in `src/classification_trainer/configuration/publishing_info.py` produces clear Pydantic validation errors for unknown fields (already handled by Pydantic's `extra = "forbid"` or default strict mode); add `model_config = ConfigDict(frozen=True, extra="forbid")` so unknown YAML keys are rejected with a clear field name in the error message
+- [x] T014 [P] [US3] Create `publishing_info/example.yaml` with all fields populated and inline comments explaining each flag, the `gguf_quantizations` list, and when to enable each format
 
 **Checkpoint**: All three user stories are independently functional and testable.
 
@@ -98,8 +98,8 @@ YAML provides a working template.
 
 **Purpose**: Stability and observability improvements across US1 and US2.
 
-- [ ] T015 Add GPU memory flush between format saves in `save_model()` in `src/classification_trainer/helpers/publishing_helper.py`: import `from classification_trainer.utils.flush_gpu_memory import flush_gpu_memory`; call `flush_gpu_memory()` after each format's save completes (inside the format loop, after card generation) to reduce VRAM pressure on sequential GGUF + merged saves
-- [ ] T016 Update `src/classification_trainer/console/console_validation.py` (or `main.py`) to ensure authentication errors from `huggingface_hub` during `publish` are caught and surfaced as a user-readable message rather than a raw `HfHubHTTPError` traceback
+- [x] T015 Add GPU memory flush between format saves in `save_model()` in `src/classification_trainer/helpers/publishing_helper.py`: import `from classification_trainer.utils.flush_gpu_memory import flush_gpu_memory`; call `flush_gpu_memory()` after each format's save completes (inside the format loop, after card generation) to reduce VRAM pressure on sequential GGUF + merged saves
+- [x] T016 Update `src/classification_trainer/console/console_validation.py` (or `main.py`) to ensure authentication errors from `huggingface_hub` during `publish` are caught and surfaced as a user-readable message rather than a raw `HfHubHTTPError` traceback
 
 ---
 

@@ -5,7 +5,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from huggingface_hub import ModelCard
+from huggingface_hub import HfApi, ModelCard
 from transformers import PreTrainedModel, PreTrainedTokenizerBase
 
 from classification_trainer.configuration import (
@@ -19,6 +19,7 @@ from classification_trainer.configuration.training_info import TrainingLengthTyp
 from classification_trainer.protocols import LoggingProtocol
 from classification_trainer.protocols.metric_result import MetricResult
 from classification_trainer.utils.common_paths import CommonPaths
+from classification_trainer.utils.flush_gpu_memory import flush_gpu_memory
 
 # ---------------------------------------------------------------------------
 # Format-specific private save functions
@@ -264,6 +265,7 @@ def save_model(
                 post_metrics,
             )
             logger.report_message(f"  \u2713 {slug}")
+            flush_gpu_memory()
         except Exception:
             shutil.rmtree(save_dir, ignore_errors=True)
             raise
@@ -274,3 +276,66 @@ def save_model(
         _save_format(SaveFormat.GGUF)
     if publishing_info.save_merged:
         _save_format(SaveFormat.MERGED)
+
+
+# ---------------------------------------------------------------------------
+# publish_model orchestrator
+# ---------------------------------------------------------------------------
+
+
+def publish_model(
+    training_info: TrainingInfo,
+    publishing_info: PublishingInfo,
+    logger: LoggingProtocol,
+) -> None:
+    if not publishing_info.any_publish_enabled:
+        return
+
+    logger.report_message("[blue]Publishing model artifacts to HuggingFace Hub...[/blue]")
+
+    slugs: list[str] = []
+    if publishing_info.publish_lora:
+        slugs.append(SaveFormat.LORA)
+    if publishing_info.publish_gguf:
+        slugs.append(SaveFormat.GGUF)
+    if publishing_info.publish_merged:
+        slugs.append(SaveFormat.MERGED)
+
+    failures: list[str] = []
+    api = HfApi()
+
+    for slug in slugs:
+        save_dir = CommonPaths.get().output_models / training_info.model_name / slug
+        repo_id = f"{training_info.hugging_face_user_name}/{training_info.model_name}-{slug}"
+
+        if not save_dir.exists():
+            msg = (
+                f"[red]Error: No saved artifacts found at {save_dir}.\n"
+                f"Run `train --publishing-info <name>` first.[/red]"
+            )
+            logger.report_message(msg)
+            failures.append(slug)
+            continue
+
+        readme = save_dir / "README.md"
+        if not readme.exists():
+            msg = (
+                f"[red]Error: Missing model card at {readme}.\n"
+                f"Re-run `train --publishing-info <name>` to regenerate.[/red]"
+            )
+            logger.report_message(msg)
+            failures.append(slug)
+            continue
+
+        try:
+            logger.report_message(f"Publishing {slug} \u2192 {repo_id}")
+            api.create_repo(repo_id=repo_id, repo_type="model", exist_ok=True, private=True)
+            api.upload_folder(folder_path=str(save_dir), repo_id=repo_id, repo_type="model")
+            logger.report_message(f"  \u2713 {slug}")
+        except Exception as exc:
+            logger.report_message(f"[red]Error publishing {slug}: {exc}[/red]")
+            failures.append(slug)
+
+    if failures:
+        failed = ", ".join(failures)
+        raise RuntimeError(f"Publishing failed for format(s): {failed}")

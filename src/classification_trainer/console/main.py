@@ -8,10 +8,12 @@ from typing import Annotated
 
 import typer
 from dotenv import load_dotenv
+from huggingface_hub.errors import HfHubHTTPError
 from rich.console import Console
 
 from classification_trainer.commands.analyze_dataset import AnalyzeDatasetCommand
 from classification_trainer.commands.compute_batch_size import ComputeBatchSizeCommand
+from classification_trainer.commands.publish import PublishCommand
 from classification_trainer.commands.test import TestCommand
 from classification_trainer.commands.train import TrainCommand
 from classification_trainer.configuration import (
@@ -99,6 +101,33 @@ def train(
         inference_info=inf_info,
         publishing_info=pub_info,
     ).execute(logger=logger)
+
+
+@app.command("publish")
+def publish(
+    training_info: Annotated[str, typer.Option("--training-info", help="Training info yaml name (no extension)")],
+    publishing_info: Annotated[str, typer.Option("--publishing-info", help="Publishing info yaml name (no extension)")],
+) -> None:
+    console = Console()
+    logger: RichConsoleLogger = RichConsoleLogger(console)
+
+    tr_info = load_config_or_exit(load_training_info, training_info, "training info", console)
+    pub_info = load_config_or_exit(load_publishing_info, publishing_info, "publishing info", console)
+
+    try:
+        PublishCommand(training_info=tr_info, publishing_info=pub_info).execute(logger=logger)
+    except HfHubHTTPError as exc:
+        if exc.response is not None and exc.response.status_code == 401:
+            console.print(
+                "[red]Error:[/red] HuggingFace authentication failed.\n"
+                "Set a valid token via the HF_TOKEN environment variable or run `huggingface-cli login`."
+            )
+        else:
+            console.print(f"[red]HuggingFace Hub error:[/red] {exc}")
+        raise typer.Exit(code=1) from None
+    except RuntimeError as exc:
+        console.print(f"[red]Error:[/red] {exc}")
+        raise typer.Exit(code=1) from None
 
 
 @app.command("compute-batch-size")

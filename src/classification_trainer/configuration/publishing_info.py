@@ -22,7 +22,7 @@ class SaveFormat(StrEnum):
 
 
 class PublishingInfo(BaseModel):
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     description: str
 
