@@ -14,6 +14,7 @@ from rich.console import Console
 from classification_trainer.commands.analyze_dataset import AnalyzeDatasetCommand
 from classification_trainer.commands.compute_batch_size import ComputeBatchSizeCommand
 from classification_trainer.commands.publish import PublishCommand
+from classification_trainer.commands.sweep import SweepCommand
 from classification_trainer.commands.test import TestCommand
 from classification_trainer.commands.train import TrainCommand
 from classification_trainer.configuration import (
@@ -153,6 +154,32 @@ def compute_batch_size(
         base_model_info=bm_info,
         training_info=tr_info,
         stress_set_rowcount=stress_set_rowcount,
+    ).execute(logger=logger)
+
+
+@app.command("sweep")
+def sweep(
+    dataset_info: Annotated[str, typer.Option("--dataset", help="Dataset info yaml name (no extension)")],
+    base_model_info: Annotated[str, typer.Option("--base-model", help="Base model info yaml name (no extension)")],
+    training_info: Annotated[str, typer.Option("--training-info", help="Training info yaml name (no extension)")],
+    inference_info: Annotated[str, typer.Option("--inference-info", help="Inference info yaml name (no extension)")],
+    count: Annotated[int, typer.Option("--count", help="Max number of sweep trials to run")] = 10,
+) -> None:
+    """Run a hyperparameter sweep using wandb."""
+    console = Console()
+    logger: RichConsoleLogger = RichConsoleLogger(console)
+
+    ds_info = load_config_or_exit(load_dataset_info, dataset_info, "dataset info", console)
+    bm_info = load_config_or_exit(load_base_model_info, base_model_info, "base model info", console)
+    tr_info = load_config_or_exit(load_training_info, training_info, "training info", console)
+    inf_info = load_config_or_exit(load_inference_info, inference_info, "inference info", console)
+
+    SweepCommand(
+        dataset_info=ds_info,
+        base_model_info=bm_info,
+        training_info=tr_info,
+        inference_info=inf_info,
+        count=count,
     ).execute(logger=logger)
 
 

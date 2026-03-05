@@ -1,0 +1,46 @@
+# Inference configuration for classification-trainer
+#
+# Controls generation parameters used during evaluation and prediction.
+# Classification tasks typically use greedy decoding (do_sample: false)
+# with a small max_new_tokens value since labels are short.
+
+# If false, use greedy decoding (recommended for classification).
+# If true, sample from the distribution (requires temperature > 0).
+do_sample: false
+
+# Sampling temperature. Only used when do_sample is true.
+# Lower values concentrate probability; 0.0 means greedy.
+temperature: 0.0
+
+# Nucleus sampling threshold. Only used when do_sample is true.
+# 1.0 means no nucleus filtering.
+top_p: 1.0
+
+# Maximum number of new tokens to generate.
+# Classification labels are short (1-3 tokens), so 8 is usually sufficient.
+max_new_tokens: 8
+
+# Optional repetition penalty. null disables it.
+# Values > 1.0 discourage token repetition.
+repetition_penalty: null
+
+# If true, applies unsloth's inference optimizations (recommended).
+prepare_unsloth_inference: true
+
+# Padding side for batched inference. "left" is standard for causal LMs.
+padding_side: "left"
+
+# If true, adds a pad token to the tokenizer if one is missing.
+ensure_pad_token: true
+
+# If true, sets model.config.pad_token_id to match the tokenizer's pad token.
+set_model_pad_token_id: true
+
+# Metrics to compute after inference.
+# Available: accuracy, precision, recall, f1, total_seen
+metrics:
+  - accuracy
+  - precision
+  - recall
+  - f1
+  - total_seen

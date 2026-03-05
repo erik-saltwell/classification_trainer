@@ -1,0 +1,29 @@
+# Chat template configuration for classification-trainer
+#
+# Defines the prompt formatting tokens that separate user instructions
+# from assistant responses. These values are model-family specific.
+
+# Token(s) that open a user turn in the formatted prompt.
+instruction_separator: "<|im_start|>user\n"
+
+# Token(s) that open the assistant turn. The model is prompted to continue
+# from this point, and training loss is computed from here onward.
+response_separator: "<|im_start|>assistant\n"
+
+# Strings that signal the end of a generation. The output is truncated
+# at the first match. Should include both turn-end and role-start markers.
+stop_strings:
+  - "<|im_end|>"
+  - "<|im_start|>"
+
+# End-of-sequence token strings. Used to retrieve token IDs from the
+# tokenizer for stopping criteria during inference.
+eos_token_strings:
+  - "<|im_end|>"
+
+# Whether to prepend a special BOS token when encoding the prompt.
+add_special_tokens: false
+
+# Whether to add a newline after the response_separator before generation.
+# True is correct for most ChatML-style models.
+assistant_newline: true

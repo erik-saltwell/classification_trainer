@@ -1,0 +1,115 @@
+# Training configuration for classification-trainer
+#
+# Controls LoRA fine-tuning hyperparameters, model output naming,
+# system prompt selection, and optional Weights & Biases logging.
+
+# Short name used to construct the HuggingFace repo:
+#   <hugging_face_user_name>/<model_name>
+model_name: "my-classifier"
+
+# HuggingFace username or organization for publishing.
+hugging_face_user_name: "your-hf-username"
+
+# Path to a Markdown file containing the system prompt (relative to src/).
+# The file is loaded at runtime and injected into every training example.
+system_prompt_name: "my_prompt.md"
+
+# Whether to count training length in steps or full epochs.
+# Options: "steps", "epoch"
+training_length_type: "epoch"
+
+# Number of steps or epochs to train for. Fractional values are supported.
+training_length: 1.0
+
+# Maximum token length for training sequences.
+# Sequences longer than this are truncated.
+max_sequence_length: 1024
+
+# Per-device batch size. Multiply by gradient_accumulation_steps for
+# the effective global batch size.
+per_device_batch_size: 4
+
+# Number of gradient accumulation steps.
+gradient_accumulation_steps: 4
+
+# If true, only the assistant response tokens contribute to the training loss.
+# Instruction tokens are masked (labels = -100).
+train_on_outputs_only: true
+
+# Data type for model weights. null means auto-detect from the model.
+# Options: null, "float16", "bfloat16", "float32"
+dtype: null
+
+# Load the base model in 4-bit quantization to reduce VRAM usage.
+load_in_4bit: true
+
+# If true, pack multiple short sequences into one training example.
+# Not recommended for classification tasks where response length is short.
+packing: false
+
+# Random seed for reproducibility.
+seed: 3412
+
+# Use LoftQ initialization for the LoRA adapter weights.
+use_loftq: false
+loftq_bits: 4
+loftq_iter: 1
+
+# Whether to use rsLoRA (rank-stabilized LoRA).
+# Automatically enabled when rank > 16.
+rslora: false
+
+# How often (in steps) to run evaluation during training.
+evaluation_steps: 50
+
+# If false, evaluation is skipped entirely.
+evaluation_enabled: true
+
+# If true, the best checkpoint is chosen by maximizing the metric.
+# If false, the checkpoint with the lowest loss is preferred.
+greater_is_better: false
+
+# LoRA adapter and optimizer hyperparameters.
+sft_parameters:
+  # LoRA rank. Higher values increase capacity but use more memory.
+  rank: 16
+
+  # lora_alpha = rank * alpha_multiplier.
+  alpha_multiplier: 2
+
+  # If true, also trains the MLP projection modules (up_proj, down_proj, gate_proj).
+  use_projection_modules: false
+
+  # LoRA dropout probability (0.0 = no dropout).
+  lora_dropout: 0.0
+
+  # Fraction of total steps used for linear warmup.
+  warmup_ratio: 0.05
+
+  # Peak learning rate.
+  learning_rate: 2e-4
+
+  # Optimizer. Common choices: adamw_torch, adamw_bnb_8bit, adamw_torch_8bit
+  optim: "adamw_bnb_8bit"
+
+  # L2 weight decay coefficient.
+  weight_decay: 0.01
+
+  # Learning rate schedule after warmup.
+  # Options: linear, cosine, cosine_with_restarts, polynomial, constant
+  lr_scheduler_type: "linear"
+
+# Optional: Weights & Biases logging configuration.
+# Remove this block entirely to disable wandb.
+wandb_config:
+  # W&B project name (groups all runs for a model).
+  project: "my-classifier-project"
+
+  # Optional sweep name stored as a tag (used for hyperparameter sweeps).
+  sweep_name: null
+
+  # Optional group name to cluster related runs (e.g., "initial training").
+  group: null
+
+  # Optional job type label (e.g., "finetune", "eval").
+  job_type: "finetune"

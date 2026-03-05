@@ -81,7 +81,9 @@ class TrainingInfo(BaseModel):
         """Return a plain dict with all enum values serialized to strings."""
         return self.model_dump(mode="json")
 
-    def create_sft_config(self, dataset_info: DatasetInfo, report_to_wandb: bool) -> SFTConfig:
+    def create_sft_config(
+        self, dataset_info: DatasetInfo, report_to_wandb: bool, output_dir: str | None = None
+    ) -> SFTConfig:
         max_steps: int = -1 if self.training_length_type == TrainingLengthType.EPOCHS else round(self.training_length)
         max_epochs: float = -1.0 if self.training_length_type == TrainingLengthType.STEPS else self.training_length
 
@@ -98,7 +100,7 @@ class TrainingInfo(BaseModel):
             optim=self.sft_parameters.optim,
             weight_decay=self.sft_parameters.weight_decay,
             lr_scheduler_type=self.sft_parameters.lr_scheduler_type,
-            output_dir=self.model_name,
+            output_dir=output_dir if output_dir is not None else self.model_name,
             seed=self.seed,
             logging_steps=10,
             save_steps=self.evaluation_steps,

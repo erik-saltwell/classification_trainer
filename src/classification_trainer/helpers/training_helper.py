@@ -79,8 +79,9 @@ def create_trainer(
     train_dataset: Dataset,
     report_to_wandb: bool,
     eval_dataset: Dataset | None = None,
+    output_dir: str | None = None,
 ) -> SFTTrainer:
-    config: SFTConfig = training_info.create_sft_config(dataset_info, report_to_wandb)
+    config: SFTConfig = training_info.create_sft_config(dataset_info, report_to_wandb, output_dir)
     trainer: SFTTrainer = SFTTrainer(
         model=model,
         processing_class=tokenizer,

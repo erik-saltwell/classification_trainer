@@ -1,0 +1,17 @@
+# Base model configuration for classification-trainer
+#
+# Selects the pretrained model to fine-tune.
+# The huggingface_name should point to a model already quantized for
+# unsloth if using 4-bit training (e.g., unsloth/* variants).
+# The chat_template must match a file in chat_template_info/ (without .yaml).
+
+# HuggingFace model repository name.
+# Use unsloth/* prefixed repos for pre-quantized 4-bit variants.
+# Examples:
+#   unsloth/Qwen2.5-0.5B-Instruct-bnb-4bit
+#   unsloth/Llama-3.2-1B-Instruct-bnb-4bit
+huggingface_name: "unsloth/Qwen2.5-0.5B-Instruct-bnb-4bit"
+
+# Name of the chat template to use (matches a file in chat_template_info/).
+# Available templates: chat-ml, llama, mistral, gemma, phi
+chat_template: "chat-ml"

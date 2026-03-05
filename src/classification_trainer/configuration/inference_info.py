@@ -24,6 +24,8 @@ class InferenceInfo(BaseModel):
     ensure_pad_token: bool = True
     set_model_pad_token_id: bool = True
     metrics: tuple[str, ...] = ("accuracy", "precision", "recall", "f1", "total_seen")
+    sweep_metric: str = "f1"
+    sweep_metric_goal: str = "maximize"
 
 
 def load_inference_info(name: str) -> InferenceInfo:

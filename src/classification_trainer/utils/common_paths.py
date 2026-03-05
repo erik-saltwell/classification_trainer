@@ -56,6 +56,13 @@ class CommonPaths:
         """Return the outputs directory path for the current target mode."""
         return CommonPaths.OUTPUTS_DIR / target_model_name
 
+    def sweep_trial_outputs(self, model_name: str, run_id: str) -> Path:
+        """Return the per-trial checkpoint directory for a sweep run.
+
+        Not auto-created by ensure_all_dirs_exist() — runtime output only.
+        """
+        return CommonPaths.OUTPUTS_DIR / model_name / run_id
+
     @property
     def fragments(self) -> Path:
         """Return the shared fragments directory path."""

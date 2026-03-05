@@ -5,3 +5,6 @@ max_new_tokens: 8
 repetition_penalty: null
 prepare_unsloth_inference: true
 metrics: ["accuracy", "precision", "recall", "f1", "total_seen"]
+# Sweep settings (optional). Valid metric names: accuracy, precision, recall, f1, total_seen
+sweep_metric: "f1"
+sweep_metric_goal: "maximize"

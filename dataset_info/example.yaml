@@ -1,0 +1,44 @@
+# Dataset configuration for classification-trainer
+#
+# Defines the HuggingFace dataset and column layout for binary classification.
+# Generated column names are derived from new_column_prefix + fixed suffixes.
+
+# HuggingFace dataset repository name.
+huggingface_name: "stanfordnlp/imdb"
+
+# Name of the column containing the input text to classify.
+content_column_name: "text"
+
+# Name of the column containing the ground-truth labels.
+label_column_name: "label"
+
+# Prefix for temporary columns added during preprocessing.
+# Must be alphanumeric + underscore.
+new_column_prefix: "tmp_"
+
+# Dataset split used for training.
+training_split_name: "train"
+
+# Optional split used for evaluation. Set to null if not available.
+test_split_name: "test"
+
+# Optional validation split. Set to null if not available.
+validation_split_name: null
+
+# Maximum number of rows to load. Use -1 to load all rows.
+max_rowcount: -1
+
+# The label value that represents a positive (target) classification.
+# The model is trained to output exactly this string.
+positive_case: "pos"
+
+# If true, label comparison is case-insensitive.
+case_invariant_comparison: true
+
+# Number of characters to search within for the positive_case label.
+# Use -1 to search the entire text. Useful when labels appear at a fixed
+# position (e.g., first 20 chars of the content).
+search_length: -1
+
+# If true, search from the end of the text instead of the beginning.
+search_from_end: false

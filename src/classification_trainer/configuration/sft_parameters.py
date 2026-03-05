@@ -116,7 +116,7 @@ class SFTParameters(BaseModel):
                 "alpha_multiplier": {"values": [1, 2]},
                 "use_projection_modules": {"values": [True, False]},
                 "warmup_ratio": {"values": [0.05, 0.1]},
-                "lr_schedular_type": {"values": ["linear", "cosine"]},
+                "lr_scheduler_type": {"values": ["linear", "cosine"]},
                 "optim": {"values": ["adamw_bnb_8bit", "sgd"]},
                 "learning_rate": {"distribution": "log_uniform_values", "min": 5e-5, "max": 2e-3},
                 "lora_dropout": {"distribution": "uniform", "min": 0, "max": 0.1},
