@@ -40,25 +40,29 @@ def _save_gguf_quant(
 ) -> None:
     """Save one GGUF quantization file to ``save_dir`` with a controlled filename.
 
-    Unsloth chooses the filename internally, so we save to a temp directory
-    and move the result into ``save_dir`` under ``output_filename``.
+    Unsloth uses the first argument as a temp dir for the HF-format merge step,
+    then writes the final .gguf file(s) to the current working directory.
+    We snapshot CWD before the call and move any new .gguf files into ``save_dir``
+    under ``output_filename`` after the call.
     If the model is sharded into multiple .gguf files, each shard is moved
     with an index suffix appended to ``output_filename``.
     """
+    cwd = Path.cwd()
+    existing_gguf = set(cwd.glob("*.gguf"))
     with tempfile.TemporaryDirectory() as tmp_dir:
         model.save_pretrained_gguf(tmp_dir, tokenizer, quantization_method=quantization_method)
-        gguf_files = sorted(Path(tmp_dir).glob("*.gguf"))
-        if not gguf_files:
-            raise RuntimeError(f"No .gguf file was created for quantization '{quantization_method}'")
-        if len(gguf_files) == 1:
-            shutil.move(str(gguf_files[0]), str(save_dir / output_filename))
-        else:
-            # Multi-shard model: append shard index to stem
-            stem = output_filename.removesuffix(".gguf")
-            total = len(gguf_files)
-            for idx, shard in enumerate(gguf_files, start=1):
-                dest = save_dir / f"{stem}-{idx:05d}-of-{total:05d}.gguf"
-                shutil.move(str(shard), str(dest))
+    gguf_files = sorted(set(cwd.glob("*.gguf")) - existing_gguf)
+    if not gguf_files:
+        raise RuntimeError(f"No .gguf file was created for quantization '{quantization_method}'")
+    if len(gguf_files) == 1:
+        shutil.move(str(gguf_files[0]), str(save_dir / output_filename))
+    else:
+        # Multi-shard model: append shard index to stem
+        stem = output_filename.removesuffix(".gguf")
+        total = len(gguf_files)
+        for idx, shard in enumerate(gguf_files, start=1):
+            dest = save_dir / f"{stem}-{idx:05d}-of-{total:05d}.gguf"
+            shutil.move(str(shard), str(dest))
 
 
 def _save_merged(

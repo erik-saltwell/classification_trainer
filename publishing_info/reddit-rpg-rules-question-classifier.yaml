@@ -1,0 +1,48 @@
+# Publishing configuration for classification-trainer
+#
+# This file controls which model formats are saved locally and which are
+# uploaded to HuggingFace Hub. Save and publish are independent: you can
+# save locally without publishing, or publish a format that was saved in
+# a previous run.
+#
+# The model is saved under:
+#   output_models/<model_name>/<format>/
+#
+# HuggingFace repos are named:
+#   <hugging_face_user_name from training_info>/<model_name>-<format>
+
+# Human-readable description that appears in the model card on HuggingFace.
+description: >
+  Binary text classifier fine-tuned with LoRA on a custom dataset.
+  This model was trained to distinguish rules questions from other kinds of
+  posts in rpg-related subreddits.
+
+# GGUF quantization levels to produce when save_gguf is true.
+# Each level becomes a separate file in the shared gguf/ directory:
+#   output_models/<model_name>/gguf/<model_name>-gguf-<quant>.gguf
+# Common choices: q4_k_m (small + fast), q8_0 (high quality), f16 (lossless).
+# All listed quantizations are uploaded to a single HuggingFace repo when
+# publish_gguf is true.
+gguf_quantizations:
+  - q8_0
+  - q4_k_m   # uncomment for a smaller quantization alongside q8_0
+
+# Unsloth save method for the merged (full-weight) checkpoint.
+# Options: merged_16bit, merged_4bit, lora_merged_16bit
+# merged_16bit is the safest default for standard HuggingFace compatibility.
+merged_save_method: merged_16bit
+
+# --- Save to local disk ---
+# Set to true to save that format after training completes.
+# Saved artifacts are required before publishing.
+save_lora: true      # LoRA adapter weights only (small, requires base model at inference)
+save_gguf: true     # GGUF file(s) for use with llama.cpp / Ollama
+save_merged: true   # Full merged checkpoint (large; HuggingFace transformers compatible)
+
+# --- Publish to HuggingFace Hub ---
+# Set to true to upload the saved artifacts to HuggingFace Hub.
+# Requires a valid HF_TOKEN environment variable (set in .env or shell).
+# Each format is published as a separate private repository.
+publish_lora: true
+publish_gguf: true
+publish_merged: true
