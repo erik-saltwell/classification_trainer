@@ -7,53 +7,58 @@
 
 ## Entities
 
-### SaveFormat (Enum)
+### SaveFormat (Internal Enum)
 
-Represents one of the four supported output formats.
+Internal slug enum used by helper code for all formats. Not user-facing.
 
 | Slug | Value | Target | Notes |
 |------|-------|--------|-------|
-| `gguf` | `"gguf"` | Ollama | Quantization level configurable |
+| `gguf` | `"gguf"` | Ollama / llama.cpp | All quants share one dir; one HF repo |
 | `lora` | `"lora"` | PEFT/HF | Adapter only (no base weights) |
 | `merged` | `"merged"` | HF pipeline / vLLM | Full merged 16-bit checkpoint |
-| `awq` | `"awq"` | vLLM | AWQ-quantized merged model |
 
-**Constraints**:
-- Must be one of these four values; any other string fails Pydantic validation at config load time.
+All GGUF quantization levels share the single slug `gguf`. Within the `gguf/`
+directory, each quantization is a separate file named
+`<model-name>-gguf-<quant>.gguf`. The list of quantizations is driven by
+`PublishingInfo.gguf_quantizations`.
 
 ---
 
 ### PublishingInfo (Pydantic Model)
 
-Loaded from `publishing_info/<name>.yaml`. Controls which formats are saved, which are published,
-HuggingFace destination, and model card description.
+Loaded from `publishing_info/<name>.yaml`. Controls which formats are saved, which are
+published, and model card content.
 
 | Field | Type | Required | Default | Notes |
 |-------|------|----------|---------|-------|
 | `description` | `str` | Yes | — | Appears verbatim as the primary description in every model card |
-| `save_formats` | `list[SaveFormat]` | Yes | — | Formats to save to disk after training; may be empty list (no save) |
-| `publish_formats` | `list[SaveFormat]` | Yes | — | Formats to upload to HuggingFace Hub |
-| `gguf_quantization` | `str` | No | `"q8_0"` | Quantization method for GGUF; e.g., `"q4_k_m"`, `"f16"` |
-| `merged_save_method` | `str` | No | `"merged_16bit"` | Unsloth save method for merged format; e.g., `"merged_4bit_forced"` |
+| `gguf_quantizations` | `list[str]` | No | `["q8_0"]` | GGUF quant levels to produce; each becomes its own artifact |
+| `merged_save_method` | `str` | No | `"merged_16bit"` | Unsloth save method; e.g., `"merged_4bit_forced"` |
+| `save_gguf` | `bool` | No | `false` | Save GGUF artifact(s) to disk |
+| `save_lora` | `bool` | No | `false` | Save LoRA adapter to disk |
+| `save_merged` | `bool` | No | `false` | Save merged HF checkpoint to disk |
+| `publish_gguf` | `bool` | No | `false` | Upload GGUF artifact(s) to HuggingFace |
+| `publish_lora` | `bool` | No | `false` | Upload LoRA adapter to HuggingFace |
+| `publish_merged` | `bool` | No | `false` | Upload merged checkpoint to HuggingFace |
 
-**Validation rules**:
-- `save_formats` and `publish_formats` elements MUST be valid `SaveFormat` enum values.
-- A format listed in `publish_formats` but not in `save_formats` is saved transiently during
-  publish (not retained locally); this is acceptable.
-- `gguf_quantization` is a free string (Unsloth validates it at runtime).
+**Rules**:
+- All boolean flags default to `false`; a config with all flags false produces no artifacts.
+- `gguf_quantizations` applies whenever `save_gguf` or `publish_gguf` is `true`.
+- `gguf_quantization` strings are validated at runtime by Unsloth (not by Pydantic).
+- A format may be published without being saved locally; the system saves transiently.
 
 **YAML location**: `publishing_info/<name>.yaml`
 
 **Example**:
 ```yaml
 description: "Fine-tuned Llama 3.2-1B for binary classification on Reddit RPG posts."
-save_formats:
-  - lora
-  - gguf
-publish_formats:
-  - lora
-  - gguf
-gguf_quantization: q8_0
+gguf_quantizations:
+  - q8_0
+  - q4_k_m
+save_gguf: true
+save_lora: true
+publish_gguf: true
+publish_lora: true
 ```
 
 ---
@@ -64,16 +69,15 @@ Represents the collection of files produced by saving one format to disk.
 
 **Location**: `output_models/<hf-model-name>/<format-slug>/`
 - `hf-model-name` = `TrainingInfo.model_name` (the bare model name, not `username/model`)
-- `format-slug` = one of `gguf`, `lora`, `merged`, `awq`
+- `format-slug` = `gguf`, `lora`, or `merged`
 
 **Contents per format**:
 
-| Format | Files |
-|--------|-------|
-| `gguf` | `<model-name>-<quant>.gguf`, `README.md` |
+| Format slug | Files |
+|------------|-------|
+| `gguf` | `<model-name>-gguf-<quant>.gguf` (one per quant level), `README.md` |
 | `lora` | `adapter_config.json`, `adapter_model.safetensors` (or `.bin`), `tokenizer.*`, `README.md` |
 | `merged` | `config.json`, `model-*.safetensors`, `tokenizer.*`, `special_tokens_map.json`, `README.md` |
-| `awq` | `config.json`, `model-*.safetensors`, `quant_config.json`, `tokenizer.*`, `README.md` |
 
 **Invariant**: A `README.md` model card MUST be present in every format directory. Its absence
 causes the publish command to fail with an actionable error.
@@ -99,10 +103,9 @@ A Markdown `README.md` file generated per saved format. Written using `huggingfa
 
 **Format-specific usage instructions**:
 
-- **gguf**: `ollama run <username>/<model-name>-gguf` (if published); local run command
+- **gguf**: List of available files (`<model-name>-gguf-<quant>.gguf`), llama.cpp load example
 - **lora**: PEFT `PeftModel.from_pretrained(base_model, repo_id)` Python snippet
 - **merged**: `AutoModelForCausalLM.from_pretrained(repo_id)` Python snippet
-- **awq**: vLLM `LLM(model="<username>/<model-name>-awq")` Python snippet
 
 ---
 
@@ -113,13 +116,12 @@ One repository per saved format on HuggingFace Hub.
 **Naming**: `<hf-username>/<model-name>-<format-slug>`
 - `hf-username` = `TrainingInfo.hugging_face_user_name`
 - `model-name` = `TrainingInfo.model_name`
-- `format-slug` = `SaveFormat` slug value
+- `format-slug` = `gguf`, `lora`, or `merged`
 
-**Examples**:
-- `alice/my-classifier-gguf`
+**Examples** (with `gguf_quantizations: [q8_0, q4_k_m]`):
+- `alice/my-classifier-gguf` — contains `my-classifier-gguf-q8_0.gguf` and `my-classifier-gguf-q4_k_m.gguf`
 - `alice/my-classifier-lora`
 - `alice/my-classifier-merged`
-- `alice/my-classifier-awq`
 
 **Properties**: Created private by default; `exist_ok=True` (idempotent creation).
 
@@ -148,7 +150,6 @@ One repository per saved format on HuggingFace Hub.
 ### Error States
 
 - **Save fails (disk full)**: Partially-written files cleaned up; error surfaced to user; subsequent formats are attempted (fail-fast per format, not per run).
-- **Save fails (VRAM OOM for AWQ)**: Error surfaced with actionable message; other formats unaffected.
 - **Publish fails (auth error)**: All formats fail; user prompted to set `HF_TOKEN`.
 - **Publish fails (missing model card)**: That format fails with error; other formats continue.
 
@@ -172,21 +173,16 @@ publishing_info/
 output_models/
 └── <model-name>/
     ├── gguf/
-    │   ├── <model>.gguf
+    │   ├── <model>-gguf-q8_0.gguf
+    │   ├── <model>-gguf-q4_k_m.gguf
     │   └── README.md
     ├── lora/
     │   ├── adapter_config.json
     │   ├── adapter_model.safetensors
     │   ├── tokenizer.json
     │   └── README.md
-    ├── merged/
-    │   ├── config.json
-    │   ├── model-*.safetensors
-    │   ├── tokenizer.json
-    │   └── README.md
-    └── awq/
+    └── merged/
         ├── config.json
-        ├── quant_config.json
         ├── model-*.safetensors
         ├── tokenizer.json
         └── README.md

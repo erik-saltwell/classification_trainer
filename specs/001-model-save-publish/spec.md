@@ -146,9 +146,11 @@ card contains the specified description text.
 - **FR-002**: Saved artifacts MUST be stored under `output_models/<hf-model-name>/
   <format-slug>/` relative to the project root, where `hf-model-name` is the
   HuggingFace model name from `TrainingInfo`.
-- **FR-003**: The system MUST support saving in four formats: GGUF (slug: `gguf`,
-  for Ollama), LoRA adapter (slug: `lora`), merged HuggingFace checkpoint
-  (slug: `merged`), and AWQ (slug: `awq`, for vLLM).
+- **FR-003**: The system MUST support saving in three format types: GGUF (for Ollama /
+  llama.cpp), LoRA adapter, and merged HuggingFace checkpoint. GGUF supports multiple
+  quantization levels simultaneously; all quantization levels share a single `gguf/`
+  directory and a single HuggingFace repository. Each quantization level is stored as
+  a separate file named `<model-name>-gguf-<quant>.gguf`.
 - **FR-004**: A new `publish` CLI command MUST upload saved model artifacts to
   HuggingFace Hub, creating one separate repository per format.
 - **FR-005**: Each HuggingFace repository MUST be named `<hf-username>/<model-name>-
@@ -159,9 +161,11 @@ card contains the specified description text.
   being separately retained locally.
 - **FR-007**: A new publishing config YAML schema MUST be defined and validated via
   a Pydantic model, stored in a `publishing_info/` directory at the project root.
-- **FR-008**: The publishing config MUST include: enabled save formats, enabled publish
-  formats, HuggingFace username, a `description` string, and per-format options
-  (e.g., GGUF quantisation level).
+- **FR-008**: The publishing config MUST use individual boolean flags to control saving
+  and publishing per format: `save_gguf`, `save_lora`, `save_merged`, `publish_gguf`,
+  `publish_lora`, `publish_merged`. It MUST also include `description` (string),
+  `gguf_quantizations` (list of quantization level strings, default `["q8_0"]`), and
+  `merged_save_method` (string, default `"merged_16bit"`).
 - **FR-009**: The train command MUST skip saving entirely if no publishing config is
   supplied or if all save formats are disabled, with no error.
 - **FR-010**: For every format saved to disk, the system MUST generate a `README.md`
@@ -182,11 +186,13 @@ card contains the specified description text.
 
 ### Key Entities
 
-- **PublishingInfo**: Config model loaded from `publishing_info/<name>.yaml`. Fields
-  include: `save_formats` (list), `publish_formats` (list), `huggingface_username`
-  (string), `description` (string), and per-format options (e.g., `gguf_quantization`).
-- **SaveFormat**: An enumerated value representing one of the four supported output
-  formats with associated slugs: `gguf`, `lora`, `merged`, `awq`.
+- **PublishingInfo**: Config model loaded from `publishing_info/<name>.yaml`. Uses
+  boolean flags (`save_gguf`, `save_lora`, `save_merged`, `publish_gguf`, `publish_lora`,
+  `publish_merged`) plus `description`, `gguf_quantizations` (list, default `["q8_0"]`),
+  and `merged_save_method` (default `"merged_16bit"`).
+- **SaveFormat**: Internal slug enum for all formats: `gguf`, `lora`, `merged`.
+  All GGUF quantization levels share the single `gguf` slug (and directory); files
+  inside are named `<model-name>-gguf-<quant>.gguf`.
 - **SavedModelArtifact**: A collection of files on disk representing one saved format
   of a trained model, living at `output_models/<model-name>/<format-slug>/`, including
   a `README.md` model card.
@@ -224,8 +230,6 @@ card contains the specified description text.
   in the existing training setup (lowest eval loss by default).
 - Publishing config YAML files are stored in a new `publishing_info/` directory
   at the project root, consistent with `training_info/` and `dataset_info/`.
-- AWQ quantisation requires sufficient VRAM; if unavailable, the save step for
-  that format fails with an actionable error.
 - Model card content derived from config files uses the YAML field values directly
   (e.g., dataset name, base model name, training hyperparameters); no LLM-generated
   prose is involved.

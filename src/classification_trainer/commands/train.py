@@ -6,9 +6,10 @@ from datasets import Dataset, DatasetDict
 from transformers import PreTrainedModel, PreTrainedTokenizerBase
 from trl.trainer.sft_trainer import SFTTrainer
 
-from classification_trainer.configuration import BaseModelInfo, DatasetInfo, TrainingInfo
+from classification_trainer.configuration import BaseModelInfo, DatasetInfo, PublishingInfo, TrainingInfo
 from classification_trainer.configuration.chat_template_info import ChatTemplateInfo
 from classification_trainer.configuration.inference_info import InferenceInfo
+from classification_trainer.helpers import publishing_helper
 from classification_trainer.helpers.dataset_helper import (
     add_eval_column,
     load_dataset_from_hf,
@@ -57,6 +58,7 @@ class TrainCommand(CommmandProtocol):
     base_model_info: BaseModelInfo
     training_info: TrainingInfo
     inference_info: InferenceInfo
+    publishing_info: PublishingInfo | None = None
     run_comparison_before_training: bool = True
     seed: int = 3414
 
@@ -196,3 +198,16 @@ class TrainCommand(CommmandProtocol):
 
             logger.add_break()
             self.report_results(pre_run_results, post_run_results, logger)
+
+            if self.publishing_info is not None:
+                publishing_helper.save_model(
+                    model,
+                    tokenizer,
+                    self.training_info,
+                    self.dataset_info,
+                    self.base_model_info,
+                    self.publishing_info,
+                    pre_run_results,
+                    post_run_results,
+                    logger,
+                )

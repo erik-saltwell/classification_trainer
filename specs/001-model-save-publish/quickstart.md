@@ -9,7 +9,6 @@
 
 - A completed training run (or use the flow below which trains and saves in one step)
 - HuggingFace account with a valid token (`HF_TOKEN` environment variable or `huggingface-cli login`)
-- For AWQ format: GPU with sufficient VRAM (~2x base model size) and `autoawq` installed
 
 ---
 
@@ -20,15 +19,18 @@ Create `publishing_info/my-run.yaml`:
 ```yaml
 description: "Fine-tuned Llama 3.2-1B-Instruct for binary classification on Reddit RPG posts."
 
-save_formats:
-  - lora
-  - gguf
+# GGUF: produce one artifact per quantization level listed here
+gguf_quantizations:
+  - q8_0
+  - q4_k_m
 
-publish_formats:
-  - lora
-  - gguf
+save_gguf: true
+save_lora: true
+save_merged: false
 
-gguf_quantization: q8_0
+publish_gguf: true
+publish_lora: true
+publish_merged: false
 ```
 
 ---
@@ -55,7 +57,8 @@ output_models/my-classifier/
 │   ├── tokenizer.json
 │   └── README.md
 └── gguf/
-    ├── my-classifier-q8_0.gguf
+    ├── my-classifier-gguf-q8_0.gguf
+    ├── my-classifier-gguf-q4_k_m.gguf
     └── README.md
 ```
 
@@ -66,7 +69,7 @@ output_models/my-classifier/
 Review the generated card before publishing:
 
 ```bash
-cat output_models/my-classifier/gguf/README.md
+cat output_models/my-classifier/gguf-q8_0/README.md
 ```
 
 The card contains your description, training config, dataset info, and pre/post metrics.
@@ -91,16 +94,22 @@ All formats published successfully.
 
 Each format is its own repository on HuggingFace:
 - `https://huggingface.co/alice/my-classifier-lora`
-- `https://huggingface.co/alice/my-classifier-gguf`
+- `https://huggingface.co/alice/my-classifier-gguf` (contains both quant files)
 
 ---
 
 ## Using Published Models
 
-### GGUF with Ollama
+### GGUF with llama.cpp / Ollama
 
 ```bash
-ollama run alice/my-classifier-gguf
+# Download specific quant files from the shared repo
+huggingface-cli download alice/my-classifier-gguf \
+    my-classifier-gguf-q8_0.gguf \
+    my-classifier-gguf-q4_k_m.gguf
+
+# Load with llama.cpp
+llama-cli -m my-classifier-gguf-q8_0.gguf
 ```
 
 ### LoRA with Python (PEFT)
@@ -122,27 +131,19 @@ from transformers import pipeline
 pipe = pipeline("text-generation", model="alice/my-classifier-merged")
 ```
 
-### AWQ with vLLM
-
-```python
-from vllm import LLM
-
-llm = LLM(model="alice/my-classifier-awq")
-```
-
 ---
 
 ## Save-Only (No Publish)
 
-To save locally without publishing, set `publish_formats` to an empty list:
+To save locally without publishing, set all `publish_*` flags to `false` (or omit them):
 
 ```yaml
 # publishing_info/save-only.yaml
 description: "..."
-save_formats:
-  - lora
-  - gguf
-publish_formats: []
+save_lora: true
+save_gguf: true
+gguf_quantizations:
+  - q8_0
 ```
 
 Then run `train --publishing-info save-only` — no HuggingFace credentials needed.

@@ -6,25 +6,23 @@
 ## Summary
 
 After training completes, the best-performing model checkpoint is saved to disk in
-configurable formats (GGUF, LoRA adapter, merged HF checkpoint, AWQ) alongside a
-generated model card. A new `publish` CLI command uploads saved artifacts to HuggingFace
-Hub, one repository per format, named `<username>/<model-name>-<format>`. All behavior
-is driven by a new `PublishingInfo` YAML config model. Saving uses Unsloth's first-class
-save APIs for GGUF/LoRA/merged and the `autoawq` library (optional dependency) for AWQ.
+configurable formats (GGUF, LoRA adapter, merged HF checkpoint) alongside a generated
+model card. A new `publish` CLI command uploads saved artifacts to HuggingFace Hub,
+one repository per format, named `<username>/<model-name>-<format>`. All behavior is
+driven by a new `PublishingInfo` YAML config model. Saving uses Unsloth's first-class
+save APIs for GGUF/LoRA/merged.
 
 ## Technical Context
 
 **Language/Version**: Python 3.11+
 **Primary Dependencies**: Unsloth (GGUF/LoRA/merged save), `huggingface_hub` (upload + ModelCard),
-`autoawq` (AWQ format — optional extra), Pydantic v2 (config model), Typer + Rich (CLI)
+Pydantic v2 (config model), Typer + Rich (CLI)
 **Storage**: Local filesystem (`output_models/`), HuggingFace Hub (remote)
 **Testing**: pytest (existing project convention)
-**Target Platform**: Linux (GPU server — required for AWQ; other formats CPU-compatible)
+**Target Platform**: Linux (GPU server) or any machine with sufficient VRAM
 **Project Type**: CLI tool
-**Performance Goals**: Save operations are batch/offline; no latency target. AWQ may take
-several minutes on a 7B model.
-**Constraints**: AWQ requires GPU VRAM ~2x base model size. All saves occur after training
-completes (not during).
+**Performance Goals**: Save operations are batch/offline; no latency target.
+**Constraints**: All saves occur after training completes (not during).
 **Scale/Scope**: Single model per training run; one repository per format on HuggingFace.
 
 ## Constitution Check
@@ -37,7 +35,7 @@ completes (not during).
 | II. Protocol-Based Interfaces | ✅ PASS | `PublishCommand` accepts `LoggingProtocol`. `publishing_helper` functions accept `LoggingProtocol`. No concrete logger types in helpers. |
 | III. Separation of Concerns | ✅ PASS | `publishing_helper.py` owns all save/publish/card-gen logic. `PublishCommand` and `TrainCommand` orchestrate only. `PublishingInfo` in `configuration/`. |
 | IV. Observability | ✅ PASS | Pre/post metrics flow into model card. All log messages via `LoggingProtocol`. Progress indicators for each format during upload. |
-| V. Simplicity & Scope | ✅ PASS | Saving/publishing fine-tuned classification models is in direct scope. AWQ adds one optional dependency, justified as a real deployment target. No premature abstractions. |
+| V. Simplicity & Scope | ✅ PASS | Saving/publishing fine-tuned classification models is in direct scope. No premature abstractions. |
 
 *Post-Phase-1 re-check*: All gates pass. No complexity violations.
 
@@ -86,10 +84,8 @@ Key decisions:
 - GGUF: `model.save_pretrained_gguf(path, tokenizer, quantization_method=...)`
 - LoRA: `model.save_pretrained(path)` + `tokenizer.save_pretrained(path)`
 - Merged: `model.save_pretrained_merged(path, tokenizer, save_method="merged_16bit")`
-- AWQ: `autoawq` optional dependency; load merged → quantize → save
 - HF upload: `HfApi.create_repo(..., exist_ok=True, private=True)` + `HfApi.upload_folder`
 - Model card: `huggingface_hub.ModelCard` with f-string content; no LLM generation
-- `autoawq` is the only new dependency (optional extra)
 
 ## Phase 1: Design
 
@@ -98,8 +94,12 @@ Complete. See [data-model.md](data-model.md), [contracts/cli-contracts.md](contr
 
 ### Key Design Points
 
-**PublishingInfo fields**: `description`, `save_formats`, `publish_formats`,
-`gguf_quantization` (default `q8_0`), `merged_save_method` (default `merged_16bit`).
+**PublishingInfo fields**: `description`, `gguf_quantizations` (list, default `["q8_0"]`),
+`merged_save_method` (default `"merged_16bit"`), and eight boolean flags:
+`save_gguf`, `save_lora`, `save_merged`, `publish_gguf`, `publish_lora`,
+`publish_merged` (all default `false`).
+All GGUF quant levels share one directory (`gguf/`) and one HF repo (`<model>-gguf`).
+Files inside are named `<model-name>-gguf-<quant>.gguf` (e.g. `my-classifier-gguf-q8_0.gguf`).
 
 **Model card content** (generated from configs + live metrics):
 1. Title, Description, Model Details, Dataset, Training Config
@@ -114,9 +114,6 @@ Complete. See [data-model.md](data-model.md), [contracts/cli-contracts.md](contr
 - `pre_metrics: list[MetricResult]`, `post_metrics: list[MetricResult]`
 
 **HF repository naming**: `<hf-username>/<model-name>-<format-slug>` (see contracts).
-
-**AWQ dependency handling**: Import `autoawq` inside the AWQ save branch only. If not
-installed, raise `ImportError` with message `"AWQ format requires autoawq: pip install autoawq"`.
 
 **CommonPaths changes**:
 - Add `PUBLISHING_INFO_DIR = Path("publishing_info")` constant

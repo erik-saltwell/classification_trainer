@@ -95,25 +95,6 @@ This is an example of how to list things you need to use the software and how to
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-### Optional Dependencies
-
-The base install covers training, evaluation, and saving models in GGUF, LoRA adapter,
-and merged HuggingFace checkpoint formats.
-
-**AWQ format** (for serving with [vLLM](https://github.com/vllm-project/vllm)) requires
-an additional library. Install it with:
-
-```sh
-uv pip install -e ".[awq]"
-```
-
-You only need this if you set `awq` in `save_formats` or `publish_formats` inside a
-`publishing_info` YAML config. AWQ quantization also requires a GPU with roughly 2×
-the base model's size in VRAM (e.g. ~14 GB for a 7B model).
-
-If you select the `awq` format without installing this extra, the save step will fail
-immediately with a clear message telling you to run the command above.
-
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
