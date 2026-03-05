@@ -102,7 +102,8 @@ def create_trainer(
     return trainer
 
 
-def run_training(trainer: SFTTrainer, model: PreTrainedModel) -> TrainOutput:
+def run_training(trainer: SFTTrainer, model: PreTrainedModel) -> int:
+    """Train the model and return the final global step."""
     import wandb
 
     model.train()
@@ -110,4 +111,4 @@ def run_training(trainer: SFTTrainer, model: PreTrainedModel) -> TrainOutput:
     ctx = suppress_wandb_finish() if wandb.run is not None else nullcontext()
     with ctx:
         training_output = cast(TrainOutput, trainer.train())
-    return training_output  # pyright: ignore
+    return training_output.global_step  # pyright: ignore

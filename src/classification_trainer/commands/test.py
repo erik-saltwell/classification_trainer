@@ -101,7 +101,7 @@ class TestCommand(CommmandProtocol):
         counts: ClassificationCounts = collect_classification_counts(self.dataset_info, test_dataset)
         metric_creators = get_metrics_from_inference_info(self.inference_info)
         reporter: LoggerMetricsReporter = LoggerMetricsReporter(logger)
-        reporter.report(generate_metrics(counts, metric_creators))
+        reporter.report(generate_metrics(counts, metric_creators), step=0)
 
     def compare_inference_methods(
         self, logger: LoggingProtocol, number_of_instances_of_each_classification_type: int = -1

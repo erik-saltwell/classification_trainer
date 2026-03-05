@@ -1,4 +1,5 @@
 from contextlib import nullcontext
+from enum import IntEnum
 
 from attr import dataclass
 from datasets import Dataset, DatasetDict
@@ -46,6 +47,10 @@ class DatasetSplits:
     validation_dataset: Dataset
 
 
+class MetricsTrainingSteps(IntEnum):
+    PRE_TRAINING = 0
+
+
 @dataclass
 class TrainCommand(CommmandProtocol):
     dataset_info: DatasetInfo
@@ -87,6 +92,7 @@ class TrainCommand(CommmandProtocol):
         metric_creators: list[MetricProtocol],
         logger: LoggingProtocol,
         reporter: MetricsReportingProtocol,
+        step: int,
     ) -> list[MetricResult]:
         model, tokenizer = setup_unsloth_inference(model, tokenizer, self.inference_info)
         chat_template: ChatTemplateInfo = self.base_model_info.chat_template_info
@@ -96,7 +102,7 @@ class TrainCommand(CommmandProtocol):
         dataset = add_classification_result_column(self.dataset_info, dataset)
         counts: ClassificationCounts = collect_classification_counts(self.dataset_info, dataset)
         return_value = list(generate_metrics(counts, metric_creators))
-        reporter.report(return_value)
+        reporter.report(return_value, step)
         return return_value
 
     def train_model(
@@ -105,7 +111,7 @@ class TrainCommand(CommmandProtocol):
         tokenizer: PreTrainedTokenizerBase,
         training_dataset: Dataset,
         validation_dataset: Dataset,
-    ) -> None:
+    ) -> int:
         trainer: SFTTrainer = create_trainer(
             self.dataset_info,
             self.training_info,
@@ -116,7 +122,7 @@ class TrainCommand(CommmandProtocol):
             self.training_info.wandb_config is not None,
             validation_dataset,
         )
-        run_training(trainer, model)
+        return run_training(trainer, model)
 
     def report_results(
         self, pre_run_results: list[MetricResult], post_run_results: list[MetricResult], logger: LoggingProtocol
@@ -150,11 +156,10 @@ class TrainCommand(CommmandProtocol):
 
             metric_creators: list[MetricProtocol] = list(get_metrics_from_inference_info(self.inference_info))
 
-            pre_reporters: list[MetricsReportingProtocol] = [LoggerMetricsReporter(logger)]
-            post_reporters: list[MetricsReportingProtocol] = [LoggerMetricsReporter(logger)]
+            reporters: list[MetricsReportingProtocol] = [LoggerMetricsReporter(logger)]
             if wandb_enabled:
-                pre_reporters.append(WandBMetricsReporter(prefix="pre_train/"))
-                post_reporters.append(WandBMetricsReporter(prefix="post_train/"))
+                reporters.append(WandBMetricsReporter())
+            reporter = CompositeMetricsReporter(reporters)
 
             logger.report_message("[blue]Pre Training Assessment...[/blue]")
             pre_run_results: list[MetricResult] = self.test_model(
@@ -163,11 +168,14 @@ class TrainCommand(CommmandProtocol):
                 data_splits.test_dataset,
                 metric_creators,
                 logger,
-                CompositeMetricsReporter(pre_reporters),
+                reporter,
+                step=MetricsTrainingSteps.PRE_TRAINING,
             )
 
             logger.report_message("[blue]Training...[/blue]")
-            self.train_model(model, tokenizer, data_splits.training_dataset, data_splits.validation_dataset)
+            final_step = self.train_model(
+                model, tokenizer, data_splits.training_dataset, data_splits.validation_dataset
+            )
 
             logger.report_message("[blue]Post-Run Assessment...[/blue]")
             post_run_results: list[MetricResult] = self.test_model(
@@ -176,7 +184,8 @@ class TrainCommand(CommmandProtocol):
                 data_splits.test_dataset,
                 metric_creators,
                 logger,
-                CompositeMetricsReporter(post_reporters),
+                reporter,
+                step=final_step + 1,
             )
 
             logger.add_break()
