@@ -213,14 +213,6 @@ classification-trainer publish --training-info <name> --publishing-info <name>
 | `--training-info` | Training info config name (required) | — |
 | `--publishing-info` | Publishing info config name (required) | — |
 
-### `test`
-
-Simple smoke command to verify the CLI is installed correctly.
-
-```
-classification-trainer test
-```
-
 ### `--version`
 
 ```

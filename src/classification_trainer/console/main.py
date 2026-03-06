@@ -15,7 +15,6 @@ from classification_trainer.commands.analyze_dataset import AnalyzeDatasetComman
 from classification_trainer.commands.compute_batch_size import ComputeBatchSizeCommand
 from classification_trainer.commands.publish import PublishCommand
 from classification_trainer.commands.sweep import SweepCommand
-from classification_trainer.commands.test import TestCommand
 from classification_trainer.commands.train import TrainCommand
 from classification_trainer.configuration import (
     load_base_model_info,
@@ -171,14 +170,6 @@ def sweep(
         inference_info=inf_info,
         count=count,
     ).execute(logger=logger)
-
-
-@app.command("test")
-def test() -> None:
-    """Simple smoke command."""
-    console = Console()
-    logger: RichConsoleLogger = RichConsoleLogger(console)
-    TestCommand().execute(logger)
 
 
 def _version_callback(value: bool) -> None:
