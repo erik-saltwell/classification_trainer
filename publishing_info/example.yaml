@@ -74,9 +74,14 @@ save_merged: false
 # ---------------------------------------------------------------------------
 # Set to true to upload saved artifacts to HuggingFace Hub.
 # Requires a valid HF_TOKEN environment variable (set in .env or via shell).
-# Each format is published as a separate private repository.
+# Each format is published as a separate repository (private by default).
 # Publishing will fail if the corresponding save flag is false (save first).
 
 publish_lora: false
 publish_gguf: false
 publish_merged: false
+
+# Whether published HuggingFace repos are private. When true (the default),
+# repos are only visible to the repo owner. Set to false to make them public.
+# Default: true
+private: true

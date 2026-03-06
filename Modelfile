@@ -1,5 +1,5 @@
 
-FROM Qwen2.5-1.5B-Instruct.Q4_K_M.gguf
+FROM Qwen2.5-0.5B-Instruct.Q4_K_M.gguf
 TEMPLATE """{{- if .Messages }}
 {{- if or .System .Tools }}<|im_start|>system
 {{- if .System }}

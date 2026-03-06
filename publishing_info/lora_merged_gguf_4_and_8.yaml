@@ -80,3 +80,8 @@ save_merged: true
 publish_lora: true
 publish_gguf: true
 publish_merged: true
+
+# Whether published HuggingFace repos are private. When true (the default),
+# repos are only visible to the repo owner. Set to false to make them public.
+# Default: true
+private: false

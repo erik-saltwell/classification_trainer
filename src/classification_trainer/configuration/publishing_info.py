@@ -42,6 +42,9 @@ class PublishingInfo(BaseModel):
     publish_lora: bool = False
     publish_merged: bool = False
 
+    # --- Repository visibility ---
+    private: bool = True
+
     @property
     def any_save_enabled(self) -> bool:
         return any([self.save_gguf, self.save_lora, self.save_merged])

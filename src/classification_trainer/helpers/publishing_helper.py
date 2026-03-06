@@ -333,7 +333,7 @@ def publish_model(
 
         try:
             logger.report_message(f"Publishing {slug} \u2192 {repo_id}")
-            api.create_repo(repo_id=repo_id, repo_type="model", exist_ok=True, private=True)
+            api.create_repo(repo_id=repo_id, repo_type="model", exist_ok=True, private=publishing_info.private)
             api.upload_folder(folder_path=str(save_dir), repo_id=repo_id, repo_type="model")
             logger.report_message(f"  \u2713 {slug}")
         except Exception as exc:
