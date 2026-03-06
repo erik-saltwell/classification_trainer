@@ -18,16 +18,22 @@ cd classification_trainer
 uv sync
 ```
 
-Create a `.env` file in the project root with your HuggingFace token:
+### Environment Variables
+
+The following environment variables are required:
+
+| Variable | Description |
+|---|---|
+| `HF_TOKEN` | [HuggingFace](https://huggingface.co/) access token for downloading models and publishing results |
+| `WANDB_API_KEY` | [Weights & Biases](https://wandb.ai/) API key for experiment tracking and sweeps |
+| `LOG_LEVEL` | Python log level (e.g., `WARNING`, `INFO`, `DEBUG`) — optional, defaults to `WARNING` |
+
+You can set these in a `.env` file in the project root (see `.env.example`):
 
 ```
-HF_TOKEN=hf_your_token_here
-```
-
-Log in to wandb:
-
-```bash
-wandb login
+LOG_LEVEL=WARNING
+WANDB_API_KEY=<your-api-key>
+HF_TOKEN=<your-api-key>
 ```
 
 ## Quick Start
