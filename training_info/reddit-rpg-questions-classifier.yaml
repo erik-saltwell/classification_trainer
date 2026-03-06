@@ -1,0 +1,229 @@
+
+
+# Training configuration for classification-trainer
+#
+# This file ties together all the configs needed for a training run. It references
+# reusable configs (base model, inference, publishing) by name, so most new runs
+# only require a new dataset config and this file.
+#
+# Copy this file, rename it to your model name (kebab-case), fill in your values,
+# and pass it to the CLI with --training-info <name-without-.yaml>.
+
+
+# ---------------------------------------------------------------------------
+# Model identity (REQUIRED)
+# ---------------------------------------------------------------------------
+
+# Short name for the trained model. Used as the HuggingFace repo name suffix
+# and as the output directory name under output_models/.
+# Format: kebab-case, no spaces. Example: "my-rpg-classifier"
+model_name: "reddit-rpg-rules-questions-classifier"
+
+
+# HuggingFace username or organization that owns the published repos.
+# Example: "eriksalt" or "my-org"
+hugging_face_user_name: "eriksalt"
+
+# Human-readable description that appears in the model card on HuggingFace.
+# Written in plain text; will be rendered as Markdown in the model card.
+# Use the YAML block scalar (>) to write multi-line descriptions without quotes.
+model_card_description: >
+  Binary text classifier fine-tuned with LoRA on a custom dataset.
+  This model was trained to distinguish rules questions from other kinds of
+  posts in rpg-related subreddits.
+
+
+# ---------------------------------------------------------------------------
+# References to reusable config files (REQUIRED unless noted)
+# ---------------------------------------------------------------------------
+
+# Filename stem (no .yaml extension) of the base_model_info config to use.
+# Must match a file in base_model_info/. Example: "qwen2.5-0.5b-instruct"
+# See base_model_info/example.yaml for the config format.
+base_model: "qwen2.5-7B-instruct-bnb-4bit"
+
+# Filename stem of the inference_info config to use for evaluation.
+# Must match a file in inference_info/. Example: "simple-classification"
+# See inference_info/example.yaml for the config format.
+inference: "simple-classification"
+
+# Filename stem of the publishing_info config to use for saving/publishing artifacts.
+# Must match a file in publishing_info/. Set to null to skip all saving and publishing.
+# Example: "standard-publish" or null
+publishing: "lora_merged_gguf_4_and_8"
+
+
+# ---------------------------------------------------------------------------
+# System prompt (REQUIRED)
+# ---------------------------------------------------------------------------
+
+# Filename (with extension) of the Markdown prompt file loaded at runtime.
+# The file must live under src/classification_trainer/fragments/.
+# Example: "my_prompt.md"
+system_prompt_name: "rpg_post_classification_prompt.md"
+
+
+# ---------------------------------------------------------------------------
+# Training length (REQUIRED)
+# ---------------------------------------------------------------------------
+
+# Whether to count training by steps or full epochs.
+# Allowed values: "steps", "epoch"
+training_length_type: "epoch"
+
+# Number of steps or epochs to train for. Fractional epochs are allowed.
+# Example: 1.0 (one full epoch), 0.15 (15% of one epoch), 500 (500 steps)
+training_length: 3
+
+# ---------------------------------------------------------------------------
+# Sequence and memory settings (REQUIRED)
+# ---------------------------------------------------------------------------
+
+# Maximum token length for training sequences. Sequences longer than this are
+# truncated. Higher values use more VRAM. Typical range: 512–4096.
+max_sequence_length: 1536
+
+# Per-device batch size. Multiply by gradient_accumulation_steps for the
+# effective global batch size. Reduce if you run out of VRAM.
+per_device_batch_size: 4
+
+# Number of gradient accumulation steps. Effective batch = per_device * this.
+# Higher values simulate a larger batch size without extra VRAM.
+gradient_accumulation_steps: 4
+
+
+# ---------------------------------------------------------------------------
+# Training behaviour (OPTIONAL — defaults shown)
+# ---------------------------------------------------------------------------
+
+# If true, only assistant-response tokens contribute to the training loss.
+# Instruction tokens are masked (labels = -100). Recommended: true.
+# Default: true
+train_on_outputs_only: true
+
+# Data type for model weights. null means auto-detect from the model.
+# Allowed values: null, "float16", "bfloat16", "float32"
+# Default: null
+dtype: null
+
+# Load the base model in 4-bit quantization to reduce VRAM usage.
+# Required for QLoRA training with unsloth 4-bit models.
+# Default: true
+load_in_4bit: true
+
+# If true, pack multiple short sequences into one training example.
+# Not recommended for classification (short responses confuse sequence packing).
+# Default: false
+packing: false
+
+# Random seed for reproducibility. Any integer.
+# Default: 3414
+seed: 3414
+
+# Use LoftQ initialization for the LoRA adapter weights.
+# Only enable if you have specific reasons to use LoftQ.
+# Default: false
+use_loftq: false
+
+# LoftQ-specific settings. Ignored when use_loftq is false.
+loftq_bits: 4    # Quantization bits for LoftQ. Allowed: 4, 8
+loftq_iter: 1    # Number of LoftQ alternating iterations. Typical: 1–5
+
+# Use rank-stabilized LoRA (rsLoRA). Automatically enabled when rank > 16.
+# Default: false
+rslora: false
+
+
+# ---------------------------------------------------------------------------
+# Evaluation settings (OPTIONAL — defaults shown)
+# ---------------------------------------------------------------------------
+
+# How often (in training steps) to run evaluation and save a checkpoint.
+# Default: 50
+evaluation_steps: 50
+
+# If false, evaluation is skipped entirely during training.
+# Default: true
+evaluation_enabled: true
+
+# If true, the best checkpoint is chosen by maximizing eval_loss (lower = better
+# is false here). Set to true only if using a custom metric where higher is better.
+# Default: false
+greater_is_better: false
+
+
+# ---------------------------------------------------------------------------
+# LoRA adapter and optimizer hyperparameters (OPTIONAL — defaults shown)
+# ---------------------------------------------------------------------------
+
+sft_parameters:
+  # LoRA rank. Higher values increase model capacity but use more VRAM.
+  # Common values: 8, 16, 32, 64. rsLoRA is auto-enabled above rank 16.
+  # Default: 16
+  rank: 16
+
+  # lora_alpha = rank * alpha_multiplier. Controls LoRA scaling.
+  # Common values: 1 (alpha = rank) or 2 (alpha = 2*rank).
+  # Default: 2
+  alpha_multiplier: 1
+
+  # If true, also trains MLP projection modules (up_proj, down_proj, gate_proj).
+  # Increases expressiveness at the cost of more VRAM and compute.
+  # Default: false
+  use_projection_modules: true
+
+  # LoRA dropout probability. 0.0 means no dropout.
+  # Allowed range: 0.0–1.0. Default: 0.0
+  lora_dropout: 0.0
+
+  # Fraction of total training steps used for linear warmup.
+  # Allowed range: 0.0–1.0. Default: 0.05
+  warmup_ratio: 0.05
+
+  # Peak learning rate. Typical range for LoRA fine-tuning: 1e-5 to 5e-4.
+  # Default: 2e-4
+  learning_rate: 2e-4
+
+  # Optimizer. Allowed values:
+  #   adamw_torch         — standard PyTorch AdamW
+  #   adamw_bnb_8bit      — 8-bit AdamW (saves VRAM, recommended for QLoRA)
+  #   adamw_torch_8bit    — 8-bit AdamW via torch
+  # Default: "adamw_bnb_8bit"
+  optim: "adamw_bnb_8bit"
+
+  # L2 weight decay coefficient. Typical range: 0.0–0.1.
+  # Default: 0.01
+  weight_decay: 0.01
+
+  # Learning rate schedule after the warmup phase.
+  # Allowed values: linear, cosine, cosine_with_restarts, polynomial, constant
+  # Default: "linear"
+  lr_scheduler_type: "linear"
+
+# ---------------------------------------------------------------------------
+# Weights & Biases logging (OPTIONAL — remove this block to disable wandb)
+# ---------------------------------------------------------------------------
+
+# Remove or comment out this entire block to disable wandb logging.
+wandb_config:
+  # W&B project name. All runs for this model will appear under this project.
+  project: "test-reddit-questions"
+
+  # Optional sweep name stored as a tag (used for hyperparameter sweeps).
+  # Set to null for regular training runs.
+  sweep_name: "test-sweep"
+
+  # Optional group name to cluster related runs (e.g., "initial-training").
+  # Set to null if no grouping is needed.
+  group: "initial training"
+
+  # Optional job type label (e.g., "finetune", "eval", "sweep").
+  job_type: "sweep"
+
+
+
+
+
+
+
+
