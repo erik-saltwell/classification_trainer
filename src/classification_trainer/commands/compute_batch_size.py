@@ -48,9 +48,11 @@ class ComputeBatchSizeCommand(CommmandProtocol):
 
         # P1 — Actionable final output
         if result > 0:
-            logger.report_message(f"Recommended: set per_device_batch_size: {result} in your training YAML.")
+            logger.report_message(
+                f"[green]Recommended: set per_device_batch_size: {result} in your training YAML.[/green]"
+            )
         else:
-            logger.report_message("Could not find a working batch size. Check GPU memory and model size.")
+            logger.report_message("[red]Could not find a working batch size. Check GPU memory and model size.[/red]")
 
     def prep_for_stress_test(
         self, dataset: Dataset, tokenizer: PreTrainedTokenizerBase, logger: LoggingProtocol
