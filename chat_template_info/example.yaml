@@ -1,29 +1,68 @@
 # Chat template configuration for classification-trainer
 #
-# Defines the prompt formatting tokens that separate user instructions
-# from assistant responses. These values are model-family specific.
+# Defines how user instructions and assistant responses are formatted in prompts.
+# These values are specific to the model family — check the model's tokenizer_config.json
+# or HuggingFace model page to confirm the correct format.
+#
+# This file is referenced from base_model_info via the `chat_template` field:
+#   chat_template: "chat-ml"  (matches chat_template_info/chat-ml.yaml)
+#
+# Existing templates: chat-ml, llama, mistral, gemma, phi
+# Add a new file here to support a new model family.
 
-# Token(s) that open a user turn in the formatted prompt.
+
+# ---------------------------------------------------------------------------
+# Turn separators (REQUIRED)
+# ---------------------------------------------------------------------------
+
+# Token string that opens a user (instruction) turn in the formatted prompt.
+# The full instruction is placed between this separator and the response_separator.
+# Example for ChatML: "<|im_start|>user\n"
+# Example for Llama 3: "<|start_header_id|>user<|end_header_id|>\n\n"
 instruction_separator: "<|im_start|>user\n"
 
-# Token(s) that open the assistant turn. The model is prompted to continue
-# from this point, and training loss is computed from here onward.
+# Token string that opens the assistant turn in the formatted prompt.
+# During inference the model generates from this point onward.
+# During training, loss is computed only for tokens after this separator
+# (when train_on_outputs_only is true in training_info).
+# Example for ChatML: "<|im_start|>assistant\n"
+# Example for Llama 3: "<|start_header_id|>assistant<|end_header_id|>\n\n"
 response_separator: "<|im_start|>assistant\n"
 
-# Strings that signal the end of a generation. The output is truncated
-# at the first match. Should include both turn-end and role-start markers.
+
+# ---------------------------------------------------------------------------
+# Generation stopping (OPTIONAL — default: empty lists)
+# ---------------------------------------------------------------------------
+
+# Strings that signal the end of a generated response. Generation is truncated
+# at the first match. Should include turn-end tokens and any role-start tokens
+# that could appear after the response.
+# Example for ChatML: ["<|im_end|>", "<|im_start|>"]
+# Default: [] (no stop strings — generation stops at max_new_tokens)
 stop_strings:
   - "<|im_end|>"
   - "<|im_start|>"
 
-# End-of-sequence token strings. Used to retrieve token IDs from the
-# tokenizer for stopping criteria during inference.
+# End-of-sequence token strings. Used to look up token IDs from the tokenizer
+# and register them as additional stopping criteria during inference.
+# Include the model's EOS token as a string if it is not auto-detected.
+# Example for ChatML: ["<|im_end|>"]
+# Default: [] (relies on tokenizer.eos_token_id alone)
 eos_token_strings:
   - "<|im_end|>"
 
-# Whether to prepend a special BOS token when encoding the prompt.
+
+# ---------------------------------------------------------------------------
+# Tokenizer settings (OPTIONAL — defaults shown)
+# ---------------------------------------------------------------------------
+
+# Whether to prepend a special BOS (beginning-of-sequence) token when encoding
+# the prompt. Most modern instruct models do not need this.
+# Default: false
 add_special_tokens: false
 
-# Whether to add a newline after the response_separator before generation.
-# True is correct for most ChatML-style models.
+# Whether the response_separator already includes a trailing newline.
+# If true, no extra newline is added between the separator and generation.
+# If false, a newline is appended before generation begins.
+# For ChatML (separator ends with \n): true. Default: true
 assistant_newline: true

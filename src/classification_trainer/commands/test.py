@@ -46,7 +46,7 @@ class TestCommand(CommmandProtocol):
     base_model_info: BaseModelInfo = load_base_model_info("qwen2.5-1.5b-instruct")
     training_info: TrainingInfo = load_training_info("imdb")
     stress_set_rowcount: int = 100
-    inference_info: InferenceInfo = load_inference_info("simple_classification")
+    inference_info: InferenceInfo = load_inference_info("simple-classification")
     chat_template: ChatTemplateInfo = load_chat_template_info("chat-ml")
     positive_case: str = "pos"
     case_invariant: bool = True

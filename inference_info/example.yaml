@@ -1,46 +1,103 @@
 # Inference configuration for classification-trainer
 #
-# Controls generation parameters used during evaluation and prediction.
-# Classification tasks typically use greedy decoding (do_sample: false)
-# with a small max_new_tokens value since labels are short.
+# Controls generation parameters used during model evaluation (pre- and post-training)
+# and during hyperparameter sweeps. This file is reusable — the same inference config
+# can be shared across models that use the same evaluation approach.
+#
+# Copy this file, name it (kebab-case), and reference it from training_info with:
+#   inference: "simple-classification"
+#
+# For classification tasks: use greedy decoding (do_sample: false) with a small
+# max_new_tokens value, since classification labels are short (1–3 tokens).
 
-# If false, use greedy decoding (recommended for classification).
-# If true, sample from the distribution (requires temperature > 0).
+
+# ---------------------------------------------------------------------------
+# Decoding strategy (OPTIONAL — defaults shown)
+# ---------------------------------------------------------------------------
+
+# If false, use greedy decoding (always picks the highest-probability token).
+# Recommended for classification — produces deterministic, reproducible outputs.
+# If true, sample randomly from the distribution (requires temperature > 0).
+# Default: false
 do_sample: false
 
-# Sampling temperature. Only used when do_sample is true.
-# Lower values concentrate probability; 0.0 means greedy.
+# Sampling temperature. Only active when do_sample is true.
+# Lower values (e.g., 0.1) concentrate probability on top tokens.
+# 0.0 is equivalent to greedy decoding.
+# Allowed range: 0.0–2.0. Default: 0.0
 temperature: 0.0
 
-# Nucleus sampling threshold. Only used when do_sample is true.
-# 1.0 means no nucleus filtering.
+# Nucleus (top-p) sampling threshold. Only active when do_sample is true.
+# 1.0 means no filtering (use full distribution). Lower values filter to
+# the smallest token set whose cumulative probability meets this threshold.
+# Allowed range: 0.0–1.0. Default: 1.0
 top_p: 1.0
 
-# Maximum number of new tokens to generate.
-# Classification labels are short (1-3 tokens), so 8 is usually sufficient.
+# Maximum number of new tokens to generate per inference call.
+# Classification labels are short (1–3 tokens), so 8 is sufficient and
+# prevents the model from generating verbose explanations.
+# Must be a positive integer. Default: 8
 max_new_tokens: 8
 
-# Optional repetition penalty. null disables it.
-# Values > 1.0 discourage token repetition.
+# Optional repetition penalty. Discourages generating the same token repeatedly.
+# null disables it. Values > 1.0 apply a penalty; 1.0 means no effect.
+# Useful only if the model tends to repeat itself. Default: null
 repetition_penalty: null
 
-# If true, applies unsloth's inference optimizations (recommended).
+
+# ---------------------------------------------------------------------------
+# Tokenizer and model preparation (OPTIONAL — defaults shown)
+# ---------------------------------------------------------------------------
+
+# If true, applies unsloth's inference-mode optimizations before generation.
+# Strongly recommended when using unsloth-loaded models.
+# Set to false only if using a non-unsloth model.
+# Default: true
 prepare_unsloth_inference: true
 
-# Padding side for batched inference. "left" is standard for causal LMs.
+# Padding side for batched inference. "left" is standard for causal LMs
+# (padding on the left ensures the model sees the full prompt at position 0).
+# Allowed values: "left", "right". Default: "left"
 padding_side: "left"
 
-# If true, adds a pad token to the tokenizer if one is missing.
+# If true, adds a pad token to the tokenizer if one is not already set.
+# Required for batched inference. Safe to leave true.
+# Default: true
 ensure_pad_token: true
 
 # If true, sets model.config.pad_token_id to match the tokenizer's pad token.
+# Required for batched inference. Safe to leave true.
+# Default: true
 set_model_pad_token_id: true
 
-# Metrics to compute after inference.
-# Available: accuracy, precision, recall, f1, total_seen
+
+# ---------------------------------------------------------------------------
+# Evaluation metrics (OPTIONAL — defaults shown)
+# ---------------------------------------------------------------------------
+
+# Metrics to compute after running inference on the evaluation set.
+# All listed metrics are reported in the console and (if enabled) to wandb.
+# Allowed values: accuracy, precision, recall, f1, total_seen
+# Default: [accuracy, precision, recall, f1, total_seen]
 metrics:
   - accuracy
   - precision
   - recall
   - f1
   - total_seen
+
+
+# ---------------------------------------------------------------------------
+# Sweep settings (OPTIONAL — only used by the sweep command)
+# ---------------------------------------------------------------------------
+
+# The metric that the wandb sweep agent optimizes.
+# Must be one of the values listed in `metrics` above.
+# Allowed values: accuracy, precision, recall, f1, total_seen
+# Default: "f1"
+sweep_metric: "f1"
+
+# Whether the sweep agent should maximize or minimize the sweep_metric.
+# Allowed values: "maximize", "minimize"
+# Default: "maximize"
+sweep_metric_goal: "maximize"

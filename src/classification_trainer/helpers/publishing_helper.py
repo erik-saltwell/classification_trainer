@@ -189,7 +189,7 @@ def generate_model_card(
         [
             f"# {model_name} ({format_slug})",
             "",
-            publishing_info.description,
+            training_info.model_card_description,
             "",
             "## Model Details",
             "",

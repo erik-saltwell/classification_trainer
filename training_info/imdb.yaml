@@ -1,6 +1,12 @@
 model_name: "imdb-classifier"
 hugging_face_user_name: "eriksalt"
 system_prompt_name: "imdb_test_prompt.md"
+base_model: "qwen2.5-0.5b-instruct"
+inference: "simple-classification"
+publishing: null
+model_card_description: >
+  Binary text classifier fine-tuned with LoRA on the Stanford IMDB dataset.
+  Trained to distinguish positive from negative movie reviews.
 training_length_type: "epoch"
 training_length: 0.25
 max_sequence_length: 1024

@@ -1,17 +1,52 @@
 # Base model configuration for classification-trainer
 #
-# Selects the pretrained model to fine-tune.
-# The huggingface_name should point to a model already quantized for
-# unsloth if using 4-bit training (e.g., unsloth/* variants).
-# The chat_template must match a file in chat_template_info/ (without .yaml).
+# Selects the pretrained instruct model to fine-tune. This file is reusable —
+# once created for a given base model, it can be referenced by any number of
+# training configs via the `base_model` field in training_info.
+#
+# Copy this file, name it after the model (kebab-case, e.g., "qwen2.5-0.5b-instruct"),
+# and reference it from training_info with: base_model: "qwen2.5-0.5b-instruct"
+#
+# IMPORTANT: Only instruct-tuned models are supported. Base (non-instruct) models
+# do not have chat templates and will not work correctly.
 
-# HuggingFace model repository name.
-# Use unsloth/* prefixed repos for pre-quantized 4-bit variants.
-# Examples:
-#   unsloth/Qwen2.5-0.5B-Instruct-bnb-4bit
+
+# ---------------------------------------------------------------------------
+# Model source (REQUIRED)
+# ---------------------------------------------------------------------------
+
+# HuggingFace model repository name in the format "owner/model-name".
+# For QLoRA training (load_in_4bit: true), use the pre-quantized unsloth variants
+# to avoid quantizing at load time (faster startup, less memory).
+#
+# Examples of supported pre-quantized models (from unsloth):
+#   unsloth/Qwen2.5-0.5B-Instruct-bnb-4bit   (0.5B params, very fast)
+#   unsloth/Qwen2.5-1.5B-Instruct-bnb-4bit   (1.5B params)
+#   unsloth/Qwen2.5-3B-Instruct-bnb-4bit     (3B params)
+#   unsloth/Qwen2.5-14B-Instruct-bnb-4bit    (14B params, needs 24GB+ VRAM)
 #   unsloth/Llama-3.2-1B-Instruct-bnb-4bit
+#   unsloth/Llama-3.2-3B-Instruct-bnb-4bit
+#
+# You may also use non-quantized HuggingFace models if load_in_4bit is false
+# in training_info, but they require significantly more VRAM.
 huggingface_name: "unsloth/Qwen2.5-0.5B-Instruct-bnb-4bit"
 
-# Name of the chat template to use (matches a file in chat_template_info/).
-# Available templates: chat-ml, llama, mistral, gemma, phi
+
+# ---------------------------------------------------------------------------
+# Chat template (REQUIRED)
+# ---------------------------------------------------------------------------
+
+# Filename stem (no .yaml extension) of the chat template to apply.
+# The value must match a file in chat_template_info/.
+# The chat template determines how user/assistant turns are formatted in prompts.
+#
+# Available templates (see chat_template_info/ for details):
+#   chat-ml   — for Qwen2.5, Mistral-based, and most modern instruct models
+#   llama     — for Llama 3.x instruct models
+#   gemma     — for Gemma instruct models
+#   phi       — for Phi-3/4 instruct models
+#   mistral   — for Mistral instruct models
+#
+# Check the model's HuggingFace page or tokenizer_config.json to confirm
+# which chat template format the model expects.
 chat_template: "chat-ml"

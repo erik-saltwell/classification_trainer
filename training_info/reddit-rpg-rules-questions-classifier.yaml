@@ -1,6 +1,13 @@
 model_name: "reddit-rpg-rules-questions-classifier"
 hugging_face_user_name: "eriksalt"
 system_prompt_name: "rpg_post_classification_prompt.md"
+base_model: "qwen2.5-0.5b-instruct"
+inference: "simple-classification"
+publishing: "reddit-rpg-rules-question-classifier"
+model_card_description: >
+  Binary text classifier fine-tuned with LoRA on a custom dataset.
+  This model was trained to distinguish rules questions from other kinds of
+  posts in rpg-related subreddits.
 training_length_type: "epoch"
 training_length: .15
 max_sequence_length: 1536

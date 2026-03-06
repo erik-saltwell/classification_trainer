@@ -75,6 +75,7 @@ class CommonPaths:
         self.base_model_info.mkdir(parents=True, exist_ok=True)
         self.training_info.mkdir(parents=True, exist_ok=True)
         self.chat_template_info.mkdir(parents=True, exist_ok=True)
+        self.inference_info.mkdir(parents=True, exist_ok=True)
         self.publishing_info.mkdir(parents=True, exist_ok=True)
 
     @staticmethod

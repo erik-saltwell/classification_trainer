@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from enum import StrEnum
+from typing import TYPE_CHECKING
 
 import yaml
 from pydantic import BaseModel, Field
@@ -11,6 +12,11 @@ from classification_trainer.utils import FragmentID, get_fragment
 
 from .sft_parameters import SFTParameters
 from .wandb_config import WandbConfig
+
+if TYPE_CHECKING:
+    from classification_trainer.configuration.base_model_info import BaseModelInfo
+    from classification_trainer.configuration.inference_info import InferenceInfo
+    from classification_trainer.configuration.publishing_info import PublishingInfo
 
 
 class TrainingLengthType(StrEnum):
@@ -25,6 +31,11 @@ class TrainingInfo(BaseModel):
     model_name: str  # must be valid hugging face name, use hf_validators.py
     hugging_face_user_name: str  # must be valid hugging face name, use hf_validators.py
     system_prompt_name: FragmentID
+    # References to reusable config files (filename stem, no .yaml extension)
+    base_model: str
+    inference: str
+    publishing: str | None = None
+    model_card_description: str
     training_length_type: TrainingLengthType
     training_length: float
     max_sequence_length: int
@@ -44,6 +55,26 @@ class TrainingInfo(BaseModel):
     evaluation_enabled: bool = True
     greater_is_better: bool = False
     wandb_config: WandbConfig | None = None
+
+    @property
+    def base_model_info(self) -> BaseModelInfo:
+        from classification_trainer.configuration.base_model_info import load_base_model_info
+
+        return load_base_model_info(self.base_model)
+
+    @property
+    def inference_info(self) -> InferenceInfo:
+        from classification_trainer.configuration.inference_info import load_inference_info
+
+        return load_inference_info(self.inference)
+
+    @property
+    def publishing_info(self) -> PublishingInfo | None:
+        if self.publishing is None:
+            return None
+        from classification_trainer.configuration.publishing_info import load_publishing_info
+
+        return load_publishing_info(self.publishing)
 
     @property
     def load_best_model_at_end(self) -> bool:

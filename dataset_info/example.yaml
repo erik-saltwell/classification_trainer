@@ -1,44 +1,95 @@
 # Dataset configuration for classification-trainer
 #
 # Defines the HuggingFace dataset and column layout for binary classification.
-# Generated column names are derived from new_column_prefix + fixed suffixes.
+# Copy this file, rename it to kebab-case, fill in your values, and pass it
+# to the CLI with --dataset <name-without-.yaml>.
+#
+# Generated column names are built from: new_column_prefix + fixed suffixes
+# (e.g., "tmp_training", "tmp_prediction", "tmp_classification_result").
 
-# HuggingFace dataset repository name.
+
+# ---------------------------------------------------------------------------
+# Dataset source (REQUIRED)
+# ---------------------------------------------------------------------------
+
+# HuggingFace dataset repository name in the format "owner/dataset-name".
+# The dataset must be accessible via the huggingface_hub library.
+# Example: "stanfordnlp/imdb", "eriksalt/my-dataset"
 huggingface_name: "stanfordnlp/imdb"
 
-# Name of the column containing the input text to classify.
+
+# ---------------------------------------------------------------------------
+# Column names (REQUIRED)
+# ---------------------------------------------------------------------------
+
+# Name of the column in the dataset that contains the text to classify.
+# Must exist in the dataset and contain string values.
+# Allowed characters: letters, digits, underscore only.
 content_column_name: "text"
 
-# Name of the column containing the ground-truth labels.
+# Name of the column containing the ground-truth class labels.
+# Used to build training examples and evaluate predictions.
+# Allowed characters: letters, digits, underscore only.
 label_column_name: "label"
 
-# Prefix for temporary columns added during preprocessing.
-# Must be alphanumeric + underscore.
+# Prefix applied to all temporary columns added during preprocessing.
+# Prevents collisions with existing dataset columns.
+# Allowed characters: letters, digits, underscore only. Example: "tmp_"
 new_column_prefix: "tmp_"
 
-# Dataset split used for training.
+
+# ---------------------------------------------------------------------------
+# Dataset splits (training REQUIRED; test and validation OPTIONAL)
+# ---------------------------------------------------------------------------
+
+# Name of the HuggingFace dataset split used for training.
+# Must exist in the dataset. Typical value: "train"
 training_split_name: "train"
 
-# Optional split used for evaluation. Set to null if not available.
+# Name of the split used for final evaluation (after training).
+# Set to null if the dataset has no separate test split — one will be created
+# automatically by splitting off 10% of the training data.
+# Typical value: "test" or null
 test_split_name: "test"
 
-# Optional validation split. Set to null if not available.
+# Name of the split used for in-training validation (early stopping).
+# Set to null if not available — one will be created automatically from
+# 10% of the training data alongside the test split.
+# Typical value: "validation" or null
 validation_split_name: null
 
-# Maximum number of rows to load. Use -1 to load all rows.
+
+# ---------------------------------------------------------------------------
+# Row limit (OPTIONAL — default: -1)
+# ---------------------------------------------------------------------------
+
+# Maximum number of rows to load per split. Useful for quick experiments.
+# Use -1 to load all available rows (recommended for production runs).
+# Must be -1 or a positive integer.
 max_rowcount: -1
 
-# The label value that represents a positive (target) classification.
-# The model is trained to output exactly this string.
+
+# ---------------------------------------------------------------------------
+# Classification settings (REQUIRED)
+# ---------------------------------------------------------------------------
+
+# The exact label value that represents a positive (target) classification.
+# The model is trained to output this string as its response.
+# Example: "pos", "Question", "Yes", "1"
 positive_case: "pos"
 
-# If true, label comparison is case-insensitive.
+# If true, label comparison between the model output and ground truth is
+# case-insensitive. Recommended: true, especially when label casing may vary.
+# Default: true
 case_invariant_comparison: true
 
-# Number of characters to search within for the positive_case label.
-# Use -1 to search the entire text. Useful when labels appear at a fixed
-# position (e.g., first 20 chars of the content).
+# Number of characters to search within when looking for positive_case in the
+# model output. Use -1 to search the entire output string.
+# Useful when the label always appears near the start or end of a response.
+# Example: 20 (search only the first 20 characters)
 search_length: -1
 
-# If true, search from the end of the text instead of the beginning.
+# If true, search for positive_case from the end of the model output instead
+# of the beginning. Only relevant when search_length > -1.
+# Default: false
 search_from_end: false

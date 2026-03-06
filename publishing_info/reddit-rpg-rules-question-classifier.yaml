@@ -11,12 +11,6 @@
 # HuggingFace repos are named:
 #   <hugging_face_user_name from training_info>/<model_name>-<format>
 
-# Human-readable description that appears in the model card on HuggingFace.
-description: >
-  Binary text classifier fine-tuned with LoRA on a custom dataset.
-  This model was trained to distinguish rules questions from other kinds of
-  posts in rpg-related subreddits.
-
 # GGUF quantization levels to produce when save_gguf is true.
 # Each level becomes a separate file in the shared gguf/ directory:
 #   output_models/<model_name>/gguf/<model_name>-gguf-<quant>.gguf
