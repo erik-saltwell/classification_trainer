@@ -88,6 +88,7 @@ class SweepCommand(CommmandProtocol):
                     group=wandb_config.group,
                     job_type=wandb_config.job_type,
                 )
+                logger.report_message(f"[blue]Run Number: {self.count}[/blue]")
                 trial_training_info = apply_trial_sft_parameters(self.training_info, dict(wandb.config))
                 output_dir = str(CommonPaths.get().sweep_trial_outputs(self.training_info.model_name, run.id))
 

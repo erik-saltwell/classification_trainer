@@ -17,7 +17,7 @@
 # Short name for the trained model. Used as the HuggingFace repo name suffix
 # and as the output directory name under output_models/.
 # Format: kebab-case, no spaces. Example: "my-rpg-classifier"
-model_name: "reddit-rpg-rules-questions-classifier"
+model_name: "test-reddit-rpg-rules-questions-classifier"
 
 
 # HuggingFace username or organization that owns the published repos.
@@ -73,7 +73,7 @@ training_length_type: "epoch"
 
 # Number of steps or epochs to train for. Fractional epochs are allowed.
 # Example: 1.0 (one full epoch), 0.15 (15% of one epoch), 500 (500 steps)
-training_length: 0.15
+training_length: 2
 
 # ---------------------------------------------------------------------------
 # Sequence and memory settings (REQUIRED)
@@ -211,14 +211,14 @@ wandb_config:
 
   # Optional sweep name stored as a tag (used for hyperparameter sweeps).
   # Set to null for regular training runs.
-  sweep_name: null
+  sweep_name: "test-sweep"
 
   # Optional group name to cluster related runs (e.g., "initial-training").
   # Set to null if no grouping is needed.
   group: "initial training"
 
   # Optional job type label (e.g., "finetune", "eval", "sweep").
-  job_type: "finetune"
+  job_type: "sweep"
 
 
 
