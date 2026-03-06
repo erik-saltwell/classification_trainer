@@ -85,11 +85,11 @@ max_sequence_length: 1536
 
 # Per-device batch size. Multiply by gradient_accumulation_steps for the
 # effective global batch size. Reduce if you run out of VRAM.
-per_device_batch_size: 4
+per_device_batch_size: 32
 
 # Number of gradient accumulation steps. Effective batch = per_device * this.
 # Higher values simulate a larger batch size without extra VRAM.
-gradient_accumulation_steps: 4
+gradient_accumulation_steps: 2
 
 
 # ---------------------------------------------------------------------------
@@ -140,7 +140,7 @@ rslora: false
 
 # How often (in training steps) to run evaluation and save a checkpoint.
 # Default: 50
-evaluation_steps: 50
+evaluation_steps: 5
 
 # If false, evaluation is skipped entirely during training.
 # Default: true
@@ -207,18 +207,18 @@ sft_parameters:
 # Remove or comment out this entire block to disable wandb logging.
 wandb_config:
   # W&B project name. All runs for this model will appear under this project.
-  project: "test-reddit-questions"
+  project: "reddit-rpg-rules-questions-classifier"
 
-  # Optional sweep name stored as a tag (used for hyperparameter sweeps).
+  # Optional sweep name stored as a tag (e.g. "test-sweep") (used for hyperparameter sweeps).
   # Set to null for regular training runs.
-  sweep_name: "test-sweep"
+  sweep_name: null
 
   # Optional group name to cluster related runs (e.g., "initial-training").
   # Set to null if no grouping is needed.
   group: "initial training"
 
   # Optional job type label (e.g., "finetune", "eval", "sweep").
-  job_type: "sweep"
+  job_type: "finetune"
 
 
 
