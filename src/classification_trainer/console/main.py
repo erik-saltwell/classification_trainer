@@ -99,13 +99,13 @@ def train(
 @app.command("publish")
 def publish(
     training_info: Annotated[str, typer.Option("--training-info", help="Training info yaml name (no extension)")],
-    publishing_info: Annotated[str, typer.Option("--publishing-info", help="Publishing info yaml name (no extension)")],
 ) -> None:
     console = Console()
     logger: RichConsoleLogger = RichConsoleLogger(console)
 
     tr_info = load_config_or_exit(load_training_info, training_info, "training info", console)
-    pub_info = load_config_or_exit(load_publishing_info, publishing_info, "publishing info", console)
+    assert tr_info.publishing is not None
+    pub_info = load_config_or_exit(load_publishing_info, tr_info.publishing, "publishing info", console)
 
     try:
         PublishCommand(training_info=tr_info, publishing_info=pub_info).execute(logger=logger)

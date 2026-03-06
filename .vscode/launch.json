@@ -5,34 +5,19 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "--test",
+            "name": "--sweep",
             "type": "debugpy",
             "request": "launch",
             "module": "classification_trainer",
             "console": "integratedTerminal",
             "args": [
-                "test",
-            ]
-        },
-        {
-            "name": "--train",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "classification_trainer",
-            "console": "integratedTerminal",
-            "args": [
-                "train",
+                "sweep",
                 "--dataset",
-                "rpg_reddit_post_classification",
-                "--base-model",
-                "qwen2.5-1.5b-instruct",
+                "test-reddit-questions",
                 "--training-info",
-                "reddit-rpg-rules-questions-classifier",
-                "--run-comparison-before-training",
-                "--inference-info",
-                "simple_classification",
-                "--publishing-info",
-                "reddit-rpg-rules-question-classifier",
+                "test-reddit-questions",
+                "--count",
+                "10",
             ]
         },
         {
@@ -44,9 +29,21 @@
             "args": [
                 "publish",
                 "--training-info",
-                "reddit-rpg-rules-questions-classifier",
-                "--publishing-info",
-                "reddit-rpg-rules-question-classifier",
+                "test-reddit-questions",
+            ]
+        },
+        {
+            "name": "--train",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "classification_trainer",
+            "console": "integratedTerminal",
+            "args": [
+                "train",
+                "--dataset",
+                "test-reddit-questions",
+                "--training-info",
+                "test-reddit-questions",
             ]
         },
         {
@@ -58,11 +55,9 @@
             "args": [
                 "compute-batch-size",
                 "--dataset",
-                "imdb",
-                "--base-model",
-                "qwen2.5-1.5b-instruct",
+                "test-reddit-questions",
                 "--training-info",
-                "imdb",
+                "test-reddit-questions",
                 "--stress-set-rowcount",
                 "100",
             ]
@@ -76,11 +71,9 @@
             "args": [
                 "analyze-dataset",
                 "--dataset",
-                "imdb_full",
-                "--base-model",
-                "qwen2.5-1.5b-instruct",
+                "test-reddit-questions",
                 "--training-info",
-                "imdb"
+                "test-reddit-questions",
             ]
         },
         {

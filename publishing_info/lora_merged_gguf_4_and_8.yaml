@@ -1,0 +1,82 @@
+# Publishing configuration for classification-trainer
+#
+# Controls which model formats are saved locally and which are uploaded to
+# HuggingFace Hub. This file is reusable — the same publishing config can be
+# shared across models that use the same save/publish preferences.
+#
+# Copy this file, name it (kebab-case), and reference it from training_info with:
+#   publishing: "standard-publish"
+# Set publishing: null in training_info to skip all saving and publishing.
+#
+# Model artifacts are saved under:
+#   output_models/<model_name>/<format>/
+#
+# HuggingFace repos are named:
+#   <hugging_face_user_name>/<model_name>-<format>
+#
+# NOTE: The model card description is stored in training_info (model_card_description),
+# not here — keeping this file fully reusable across models.
+
+
+# ---------------------------------------------------------------------------
+# GGUF quantization settings (OPTIONAL — default: ["q8_0"])
+# ---------------------------------------------------------------------------
+
+# List of GGUF quantization levels to produce when save_gguf is true.
+# Each level becomes a separate .gguf file inside the shared gguf/ directory.
+# All listed quantizations are uploaded to a single HuggingFace repo when
+# publish_gguf is true.
+#
+# Common choices:
+#   q4_k_m  — small and fast (~4GB for a 7B model), slight quality loss
+#   q8_0    — high quality (~8GB for a 7B model), recommended default
+#   f16     — lossless float16, largest file, best quality
+#
+# Add multiple entries to produce multiple quantizations in one run.
+gguf_quantizations:
+  - q8_0
+  - q4_k_m   # uncomment for a smaller quantization alongside q8_0
+
+
+# ---------------------------------------------------------------------------
+# Merged checkpoint save method (OPTIONAL — default: "merged_16bit")
+# ---------------------------------------------------------------------------
+
+# Unsloth save method used when producing the merged (full-weight) checkpoint.
+# The merged format produces a standard HuggingFace transformers-compatible model.
+#
+# Allowed values:
+#   merged_16bit       — saves weights in float16 (recommended, widely compatible)
+#   merged_4bit        — saves weights in 4-bit (smaller, requires bitsandbytes)
+#   lora_merged_16bit  — merges LoRA weights into the base model at float16
+merged_save_method: merged_16bit
+
+
+# ---------------------------------------------------------------------------
+# Save to local disk (OPTIONAL — all default to false)
+# ---------------------------------------------------------------------------
+# Set to true to save that format after training completes.
+# Saved artifacts are required before publishing — you cannot publish a format
+# that has not been saved first.
+
+# LoRA adapter weights only (small; requires the base model at inference time).
+save_lora: true
+
+# GGUF file(s) in the quantization levels listed above (for llama.cpp / Ollama).
+save_gguf: true
+
+# Full merged checkpoint (large; directly loadable with HuggingFace transformers).
+save_merged: true
+
+
+# ---------------------------------------------------------------------------
+# Publish to HuggingFace Hub (OPTIONAL — all default to false)
+# ---------------------------------------------------------------------------
+# Set to true to upload saved artifacts to HuggingFace Hub.
+# Requires a valid HF_TOKEN environment variable (set in .env or via shell).
+# Each format is published as a separate private repository.
+# Publishing will fail if the corresponding save flag is false (save first).
+
+publish_lora: true
+publish_gguf: true
+publish_merged: true
