@@ -12,6 +12,8 @@ Auto-generated from all feature plans. Last updated: 2026-03-05
 - Python 3.11+ + Pydantic v2, PyYAML, Typer (005-configurable-sequence-lengths)
 - YAML config files (`dataset_info/`) (005-configurable-sequence-lengths)
 - YAML config files (`training_info/`, `dataset_info/`) (006-dataset-ref-training-info)
+- Python 3.11+ + Pydantic v2 (not directly used), standard library only for this feature (007-file-logger)
+- Plain text file output (007-file-logger)
 
 - Python 3.11+ + Unsloth (GGUF/LoRA/merged save), `huggingface_hub` (upload + ModelCard), (001-model-save-publish)
 
@@ -31,9 +33,9 @@ cd src [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECHNOLO
 Python 3.11+: Follow standard conventions
 
 ## Recent Changes
+- 007-file-logger: Added Python 3.11+ + Pydantic v2 (not directly used), standard library only for this feature
 - 006-dataset-ref-training-info: Added Python 3.11+ + Pydantic v2, Typer, PyYAML
 - 005-configurable-sequence-lengths: Added Python 3.11+ + Pydantic v2, PyYAML, Typer
-- 004-sweep-config: Added Python 3.11+ + Pydantic v2, wandb (sweep API), Typer, PyYAML, Unsloth, TRL
 
 
 <!-- MANUAL ADDITIONS START -->

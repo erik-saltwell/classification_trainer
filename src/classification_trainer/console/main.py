@@ -22,9 +22,11 @@ from classification_trainer.configuration import (
     load_training_info,
 )
 from classification_trainer.configuration.inference_info import load_inference_info
+from classification_trainer.protocols.logging_protocol import CompositeLogger, LoggingProtocol
 from classification_trainer.utils.logging_config import configure_logging
 
 from .console_validation import load_config_or_exit
+from .file_logging_protocol import FileLogger
 from .rich_logging_protocol import RichConsoleLogger
 
 load_dotenv()
@@ -38,6 +40,15 @@ app = typer.Typer(
     add_completion=True,
     help="CLI for classification-trainer",
 )
+
+LOG_FILENAME: str = "classification_trainer.log"
+
+
+def create_logger() -> LoggingProtocol:
+    console = Console()
+    console_logger: RichConsoleLogger = RichConsoleLogger(console)
+    file_logger: FileLogger = FileLogger(LOG_FILENAME)
+    return CompositeLogger([console_logger, file_logger])
 
 
 @app.command("analyze-dataset")
@@ -54,7 +65,7 @@ def analyze_sequence_length(
     config YAML (defaults to [1024, 1536, 2048]).
     """
     console = Console()
-    logger: RichConsoleLogger = RichConsoleLogger(console)
+    logger: LoggingProtocol = create_logger()
 
     tr_info = load_config_or_exit(load_training_info, training_info, "training info", console)
     bm_info = load_config_or_exit(load_base_model_info, tr_info.base_model, "base model info", console)
@@ -77,7 +88,7 @@ def train(
     ] = True,
 ) -> None:
     console = Console()
-    logger: RichConsoleLogger = RichConsoleLogger(console)
+    logger: LoggingProtocol = create_logger()
 
     tr_info = load_config_or_exit(load_training_info, training_info, "training info", console)
     bm_info = load_config_or_exit(load_base_model_info, tr_info.base_model, "base model info", console)
@@ -102,7 +113,7 @@ def publish(
     training_info: Annotated[str, typer.Option("--training-info", help="Training info yaml name (no extension)")],
 ) -> None:
     console = Console()
-    logger: RichConsoleLogger = RichConsoleLogger(console)
+    logger: LoggingProtocol = create_logger()
 
     tr_info = load_config_or_exit(load_training_info, training_info, "training info", console)
     assert tr_info.publishing is not None
@@ -134,7 +145,7 @@ def compute_batch_size(
     """Find the largest batch size that fits in GPU memory."""
 
     console = Console()
-    logger: RichConsoleLogger = RichConsoleLogger(console)
+    logger: LoggingProtocol = create_logger()
 
     tr_info = load_config_or_exit(load_training_info, training_info, "training info", console)
     bm_info = load_config_or_exit(load_base_model_info, tr_info.base_model, "base model info", console)

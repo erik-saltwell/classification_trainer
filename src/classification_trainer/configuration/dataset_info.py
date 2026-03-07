@@ -104,14 +104,14 @@ class DatasetInfo(BaseModel):
             raise ValueError(f"Invalid split name '{v}': must be non-empty and contain only [a-zA-Z0-9_-]")
         return v
 
-    @field_validator("sequence_lengths")
+    @field_validator("potential_sequence_lengths")
     @classmethod
     def validate_sequence_lengths(cls, v: list[int]) -> list[int]:
         if not v:
-            raise ValueError("sequence_lengths must contain at least one value")
+            raise ValueError("potential_sequence_lengths must contain at least one value")
         for val in v:
             if val <= 0:
-                raise ValueError(f"sequence_lengths values must be positive integers, got {val}")
+                raise ValueError(f"potential_sequence_lengths values must be positive integers, got {val}")
         # Deduplicate while preserving order
         seen: set[int] = set()
         deduped: list[int] = []
