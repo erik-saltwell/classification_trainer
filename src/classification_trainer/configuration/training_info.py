@@ -11,6 +11,7 @@ from classification_trainer.configuration.dataset_info import DatasetInfo
 from classification_trainer.utils import FragmentID, get_fragment
 
 from .sft_parameters import SFTParameters
+from .sweep_config import SweepConfig
 from .wandb_config import WandbConfig
 
 if TYPE_CHECKING:
@@ -33,6 +34,7 @@ class TrainingInfo(BaseModel):
     system_prompt_name: FragmentID
     # References to reusable config files (filename stem, no .yaml extension)
     base_model: str
+    dataset: str
     inference: str
     publishing: str | None = None
     model_card_description: str
@@ -55,12 +57,19 @@ class TrainingInfo(BaseModel):
     evaluation_enabled: bool = True
     greater_is_better: bool = False
     wandb_config: WandbConfig | None = None
+    sweep: SweepConfig | None = None
 
     @property
     def base_model_info(self) -> BaseModelInfo:
         from classification_trainer.configuration.base_model_info import load_base_model_info
 
         return load_base_model_info(self.base_model)
+
+    @property
+    def dataset_info(self) -> DatasetInfo:
+        from classification_trainer.configuration.dataset_info import load_dataset_info
+
+        return load_dataset_info(self.dataset)
 
     @property
     def inference_info(self) -> InferenceInfo:

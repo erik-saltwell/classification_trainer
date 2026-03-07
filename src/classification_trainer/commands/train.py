@@ -54,7 +54,6 @@ class MetricsTrainingSteps(IntEnum):
 
 @dataclass
 class TrainCommand(CommmandProtocol):
-    dataset_info: DatasetInfo
     base_model_info: BaseModelInfo
     training_info: TrainingInfo
     inference_info: InferenceInfo
@@ -62,32 +61,35 @@ class TrainCommand(CommmandProtocol):
     run_comparison_before_training: bool = True
     seed: int = 3414
 
-    def extract_splits(self, datasets: DatasetDict) -> tuple[DatasetDict, DatasetInfo]:
-        training_dataset: Dataset = datasets[self.dataset_info.training_split_name]
-        dataset_info: DatasetInfo = self.dataset_info
-        if self.dataset_info.validation_split_name is None:
-            datasets, dataset_info = split_dataset(self.dataset_info, training_dataset, 0.1, 0.1, 3414)
-            training_dataset = datasets[self.dataset_info.training_split_name]
+    def extract_splits(self, dataset_info: DatasetInfo, datasets: DatasetDict) -> tuple[DatasetDict, DatasetInfo]:
+        training_dataset: Dataset = datasets[dataset_info.training_split_name]
+        if dataset_info.validation_split_name is None:
+            datasets, dataset_info = split_dataset(dataset_info, training_dataset, 0.1, 0.1, 3414)
         return datasets, dataset_info
 
-    def prep_dataset(self, dataset: Dataset, tokenizer: PreTrainedTokenizerBase) -> Dataset:
+    def prep_dataset(
+        self, dataset_info: DatasetInfo, dataset: Dataset, tokenizer: PreTrainedTokenizerBase
+    ) -> Dataset:
         return_dataset = prep_classification_dataset_for_training(
-            self.dataset_info, self.training_info, dataset, tokenizer, self.base_model_info.chat_template_info
+            dataset_info, self.training_info, dataset, tokenizer, self.base_model_info.chat_template_info
         )
-        return_dataset = add_eval_column(self.dataset_info, self.training_info, return_dataset, tokenizer)
+        return_dataset = add_eval_column(dataset_info, self.training_info, return_dataset, tokenizer)
 
         return return_dataset
 
-    def extract_prepared_datasets(self, datasets: DatasetDict, tokenizer: PreTrainedTokenizerBase) -> DatasetSplits:
-        training_dataset = self.prep_dataset(datasets[self.dataset_info.training_split_name], tokenizer)
-        test_dataset = self.prep_dataset(datasets[self.dataset_info.test_split_name], tokenizer)
-        validation_dataset = self.prep_dataset(datasets[self.dataset_info.validation_split_name], tokenizer)
+    def extract_prepared_datasets(
+        self, dataset_info: DatasetInfo, datasets: DatasetDict, tokenizer: PreTrainedTokenizerBase
+    ) -> DatasetSplits:
+        training_dataset = self.prep_dataset(dataset_info, datasets[dataset_info.training_split_name], tokenizer)
+        test_dataset = self.prep_dataset(dataset_info, datasets[dataset_info.test_split_name], tokenizer)
+        validation_dataset = self.prep_dataset(dataset_info, datasets[dataset_info.validation_split_name], tokenizer)
         return DatasetSplits(
             training_dataset=training_dataset, test_dataset=test_dataset, validation_dataset=validation_dataset
         )
 
     def test_model(
         self,
+        dataset_info: DatasetInfo,
         model: PreTrainedModel,
         tokenizer: PreTrainedTokenizerBase,
         dataset: Dataset,
@@ -99,23 +101,24 @@ class TrainCommand(CommmandProtocol):
         model, tokenizer = setup_unsloth_inference(model, tokenizer, self.inference_info)
         chat_template: ChatTemplateInfo = self.base_model_info.chat_template_info
         dataset = add_inferred_column(
-            dataset, self.dataset_info, model, tokenizer, self.inference_info, chat_template, logger=logger
+            dataset, dataset_info, model, tokenizer, self.inference_info, chat_template, logger=logger
         )
-        dataset = add_classification_result_column(self.dataset_info, dataset)
-        counts: ClassificationCounts = collect_classification_counts(self.dataset_info, dataset)
+        dataset = add_classification_result_column(dataset_info, dataset)
+        counts: ClassificationCounts = collect_classification_counts(dataset_info, dataset)
         return_value = list(generate_metrics(counts, metric_creators))
         reporter.report(return_value, step)
         return return_value
 
     def train_model(
         self,
+        dataset_info: DatasetInfo,
         model: PreTrainedModel,
         tokenizer: PreTrainedTokenizerBase,
         training_dataset: Dataset,
         validation_dataset: Dataset,
     ) -> int:
         trainer: SFTTrainer = create_trainer(
-            self.dataset_info,
+            dataset_info,
             self.training_info,
             self.base_model_info,
             model,
@@ -149,9 +152,10 @@ class TrainCommand(CommmandProtocol):
             tokenizer: PreTrainedTokenizerBase = load_tokenizer_from_hf(self.base_model_info)
 
             logger.report_message("[blue]Loading Datasets...[/blue]")
-            datasets: DatasetDict = load_dataset_from_hf(self.dataset_info)
-            datasets, self.dataset_info = self.extract_splits(datasets)
-            data_splits = self.extract_prepared_datasets(datasets, tokenizer)
+            dataset_info = self.training_info.dataset_info
+            datasets: DatasetDict = load_dataset_from_hf(dataset_info)
+            datasets, dataset_info = self.extract_splits(dataset_info, datasets)
+            data_splits = self.extract_prepared_datasets(dataset_info, datasets, tokenizer)
             logger.report_message(
                 "[green]Split Counts:"
                 + f"{len(data_splits.training_dataset)} training, "
@@ -171,6 +175,7 @@ class TrainCommand(CommmandProtocol):
 
             logger.report_message("[blue]Pre Training Assessment...[/blue]")
             pre_run_results: list[MetricResult] = self.test_model(
+                dataset_info,
                 model,
                 tokenizer,
                 data_splits.test_dataset,
@@ -182,11 +187,12 @@ class TrainCommand(CommmandProtocol):
 
             logger.report_message("[blue]Training...[/blue]")
             final_step = self.train_model(
-                model, tokenizer, data_splits.training_dataset, data_splits.validation_dataset
+                dataset_info, model, tokenizer, data_splits.training_dataset, data_splits.validation_dataset
             )
 
             logger.report_message("[blue]Post-Run Assessment...[/blue]")
             post_run_results: list[MetricResult] = self.test_model(
+                dataset_info,
                 model,
                 tokenizer,
                 data_splits.test_dataset,
@@ -204,7 +210,7 @@ class TrainCommand(CommmandProtocol):
                     model,
                     tokenizer,
                     self.training_info,
-                    self.dataset_info,
+                    dataset_info,
                     self.base_model_info,
                     self.publishing_info,
                     pre_run_results,

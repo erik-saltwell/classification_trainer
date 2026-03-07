@@ -48,6 +48,8 @@ class DatasetInfo(BaseModel):
     case_invariant_comparison: bool = True
     search_length: int = -1
     search_from_end: bool = False
+    # Sequence lengths to check coverage for in analyze-dataset.
+    potential_sequence_lengths: list[int] = [1024, 1536, 2048]
 
     def get_generated_column_names(self) -> Iterator[str]:
         yield self.classification_result_column_name
@@ -101,6 +103,23 @@ class DatasetInfo(BaseModel):
         if v is not None and not _SPLIT_NAME_RE.match(v):
             raise ValueError(f"Invalid split name '{v}': must be non-empty and contain only [a-zA-Z0-9_-]")
         return v
+
+    @field_validator("sequence_lengths")
+    @classmethod
+    def validate_sequence_lengths(cls, v: list[int]) -> list[int]:
+        if not v:
+            raise ValueError("sequence_lengths must contain at least one value")
+        for val in v:
+            if val <= 0:
+                raise ValueError(f"sequence_lengths values must be positive integers, got {val}")
+        # Deduplicate while preserving order
+        seen: set[int] = set()
+        deduped: list[int] = []
+        for val in v:
+            if val not in seen:
+                seen.add(val)
+                deduped.append(val)
+        return deduped
 
     def add_split(self) -> DatasetInfo:
         if self.validation_split_name or self.test_split_name:

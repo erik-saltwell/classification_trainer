@@ -9,8 +9,18 @@ from classification_trainer.configuration.training_info import TrainingInfo
 from classification_trainer.protocols.metric_result import MetricResult
 
 
-def build_sweep_config(inference_info: InferenceInfo) -> dict[str, Any]:
-    """Build the wandb sweep configuration dict from the inference profile."""
+def build_sweep_config(training_info: TrainingInfo, inference_info: InferenceInfo) -> dict[str, Any]:
+    """Build the wandb sweep configuration dict.
+
+    When training_info has a sweep block, uses its user-defined parameters.
+    Otherwise falls back to the hardcoded default search space.
+    """
+    if training_info.sweep is not None:
+        return training_info.sweep.to_wandb_sweep_config(
+            sft_parameters=training_info.sft_parameters,
+            metric_name=inference_info.sweep_metric,
+            metric_goal=inference_info.sweep_metric_goal,
+        )
     return SFTParameters.get_default_sweep_config(
         metric_name=inference_info.sweep_metric,
         metric_goal=inference_info.sweep_metric_goal,

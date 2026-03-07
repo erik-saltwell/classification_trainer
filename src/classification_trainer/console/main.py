@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import unsloth  # isort: skip  # Must precede all transformers imports
-
+import os
 from importlib.metadata import PackageNotFoundError, metadata
 from importlib.metadata import version as dist_version
 from typing import Annotated
@@ -18,7 +18,6 @@ from classification_trainer.commands.sweep import SweepCommand
 from classification_trainer.commands.train import TrainCommand
 from classification_trainer.configuration import (
     load_base_model_info,
-    load_dataset_info,
     load_publishing_info,
     load_training_info,
 )
@@ -32,6 +31,8 @@ load_dotenv()
 configure_logging()
 print(unsloth.__version__[0:0])
 
+os.environ["UNSLOTH_STUDIO_DISABLED"] = "1"
+
 app = typer.Typer(
     name="classification-trainer",
     add_completion=True,
@@ -41,21 +42,24 @@ app = typer.Typer(
 
 @app.command("analyze-dataset")
 def analyze_sequence_length(
-    dataset_info: Annotated[str, typer.Option("--dataset", help="Dataset info yaml name (no extension)")],
     training_info: Annotated[str, typer.Option("--training-info", help="Training info yaml name (no extension)")],
     merge_all_splits: Annotated[
         bool, typer.Option("--all-splits", help="Analyze all splits instead of just the training split")
     ] = False,
 ) -> None:
+    """Analyze dataset token lengths and coverage.
+
+    The dataset is resolved from the 'dataset' field in the training config YAML.
+    Sequence lengths are configured via the 'sequence_lengths' field in the dataset
+    config YAML (defaults to [1024, 1536, 2048]).
+    """
     console = Console()
     logger: RichConsoleLogger = RichConsoleLogger(console)
 
-    ds_info = load_config_or_exit(load_dataset_info, dataset_info, "dataset info", console)
     tr_info = load_config_or_exit(load_training_info, training_info, "training info", console)
     bm_info = load_config_or_exit(load_base_model_info, tr_info.base_model, "base model info", console)
 
     AnalyzeDatasetCommand(
-        dataset_info=ds_info,
         base_model_info=bm_info,
         training_info=tr_info,
         merge_all_splits=merge_all_splits,
@@ -64,7 +68,6 @@ def analyze_sequence_length(
 
 @app.command("train")
 def train(
-    dataset_info: Annotated[str, typer.Option("--dataset", help="Dataset info yaml name (no extension)")],
     training_info: Annotated[str, typer.Option("--training-info", help="Training info yaml name (no extension)")],
     run_comparison_before_training: Annotated[
         bool,
@@ -76,7 +79,6 @@ def train(
     console = Console()
     logger: RichConsoleLogger = RichConsoleLogger(console)
 
-    ds_info = load_config_or_exit(load_dataset_info, dataset_info, "dataset info", console)
     tr_info = load_config_or_exit(load_training_info, training_info, "training info", console)
     bm_info = load_config_or_exit(load_base_model_info, tr_info.base_model, "base model info", console)
     inf_info = load_config_or_exit(load_inference_info, tr_info.inference, "inference info", console)
@@ -87,7 +89,6 @@ def train(
     )
 
     TrainCommand(
-        dataset_info=ds_info,
         base_model_info=bm_info,
         training_info=tr_info,
         run_comparison_before_training=run_comparison_before_training,
@@ -125,7 +126,6 @@ def publish(
 
 @app.command("compute-batch-size")
 def compute_batch_size(
-    dataset_info: Annotated[str, typer.Option("--dataset", help="Dataset info yaml name (no extension)")],
     training_info: Annotated[str, typer.Option("--training-info", help="Training info yaml name (no extension)")],
     stress_set_rowcount: Annotated[
         int, typer.Option("--stress-set-rowcount", help="Number of rows (longest sequences) to use for stress testing")
@@ -136,12 +136,10 @@ def compute_batch_size(
     console = Console()
     logger: RichConsoleLogger = RichConsoleLogger(console)
 
-    ds_info = load_config_or_exit(load_dataset_info, dataset_info, "dataset info", console)
     tr_info = load_config_or_exit(load_training_info, training_info, "training info", console)
     bm_info = load_config_or_exit(load_base_model_info, tr_info.base_model, "base model info", console)
 
     ComputeBatchSizeCommand(
-        dataset_info=ds_info,
         base_model_info=bm_info,
         training_info=tr_info,
         stress_set_rowcount=stress_set_rowcount,
@@ -150,7 +148,6 @@ def compute_batch_size(
 
 @app.command("sweep")
 def sweep(
-    dataset_info: Annotated[str, typer.Option("--dataset", help="Dataset info yaml name (no extension)")],
     training_info: Annotated[str, typer.Option("--training-info", help="Training info yaml name (no extension)")],
     count: Annotated[int, typer.Option("--count", help="Max number of sweep trials to run")] = 10,
 ) -> None:
@@ -158,13 +155,11 @@ def sweep(
     console = Console()
     logger: RichConsoleLogger = RichConsoleLogger(console)
 
-    ds_info = load_config_or_exit(load_dataset_info, dataset_info, "dataset info", console)
     tr_info = load_config_or_exit(load_training_info, training_info, "training info", console)
     bm_info = load_config_or_exit(load_base_model_info, tr_info.base_model, "base model info", console)
     inf_info = load_config_or_exit(load_inference_info, tr_info.inference, "inference info", console)
 
     SweepCommand(
-        dataset_info=ds_info,
         base_model_info=bm_info,
         training_info=tr_info,
         inference_info=inf_info,

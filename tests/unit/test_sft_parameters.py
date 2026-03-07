@@ -134,6 +134,7 @@ _MINIMAL: dict[str, object] = {
     "hugging_face_user_name": "eriksalt",
     "system_prompt_name": FragmentID.RPG_POST_CLASSIFICATION_PROMPT,
     "base_model": "qwen2.5-0.5b-instruct",
+    "dataset": "imdb",
     "inference": "simple-classification",
     "model_card_description": "A test model.",
     "training_length_type": "epoch",
@@ -175,3 +176,9 @@ def test_training_info_each_sft_parameter_independent() -> None:
     a = TrainingInfo.model_validate(_MINIMAL)
     b = TrainingInfo.model_validate(_MINIMAL)
     assert a.sft_parameters is not b.sft_parameters
+
+
+def test_training_info_without_dataset_raises() -> None:
+    data = {k: v for k, v in _MINIMAL.items() if k != "dataset"}
+    with pytest.raises(ValidationError):
+        TrainingInfo.model_validate(data)

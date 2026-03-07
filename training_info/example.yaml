@@ -38,6 +38,11 @@ model_card_description: >
 # See base_model_info/example.yaml for the config format.
 base_model: "qwen2.5-0.5b-instruct"
 
+# Filename stem (no .yaml extension) of the dataset_info config to use.
+# Must match a file in dataset_info/. Example: "imdb", "reddit-rpg-questions"
+# See dataset_info/example.yaml for the config format.
+dataset: "imdb"
+
 # Filename stem of the inference_info config to use for evaluation.
 # Must match a file in inference_info/. Example: "simple-classification"
 # See inference_info/example.yaml for the config format.
@@ -217,3 +222,40 @@ wandb_config:
 
   # Optional job type label (e.g., "finetune", "eval", "sweep").
   job_type: "finetune"
+
+
+# ---------------------------------------------------------------------------
+# Hyperparameter sweep configuration (OPTIONAL — used only by the sweep command)
+# ---------------------------------------------------------------------------
+
+# Omit this entire block to use the default sweep search space.
+# When present, only parameters listed here are varied during the sweep;
+# all other sft_parameters are held constant at their values above.
+#
+# The sweep block is ignored by the train command — it only affects sweeps.
+
+# sweep:
+#   # Search method. Allowed values: "random" (default), "bayes", "grid"
+#   # "bayes" converges faster for smooth landscapes; "grid" is exhaustive
+#   # but requires all parameters to use discrete values (no min/max ranges).
+#   method: random
+#
+#   # Parameters to sweep. Each key must be a valid sft_parameters field name.
+#   # Three formats are supported:
+#   #
+#   # 1. Discrete list — sweep samples from these values:
+#   #    rank: {values: [8, 16, 32, 64]}
+#   #
+#   # 2. Continuous range — sweep samples from a continuous distribution:
+#   #    learning_rate: {min: 1e-5, max: 1e-3}   # auto-selects log-uniform
+#   #    weight_decay: {min: 0.0, max: 0.1}       # auto-selects uniform
+#   #    (learning_rate uses log-uniform; all others use uniform distribution)
+#   #
+#   # 3. Fixed value — parameter is held constant across all trials:
+#   #    optim: "adamw_bnb_8bit"
+#   #    rank: 32
+#   #
+#   parameters:
+#     rank: {values: [8, 16, 32]}
+#     learning_rate: {min: 1e-5, max: 1e-3}
+#     optim: "adamw_bnb_8bit"

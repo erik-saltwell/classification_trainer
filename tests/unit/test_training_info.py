@@ -20,6 +20,7 @@ _BASE_DICT: dict = {
     "hugging_face_user_name": "testuser",
     "system_prompt_name": "rpg_post_classification_prompt.md",
     "base_model": "qwen2.5-0.5b-instruct",
+    "dataset": "imdb",
     "inference": "simple-classification",
     "publishing": None,
     "model_card_description": "A test classifier.",

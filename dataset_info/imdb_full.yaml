@@ -8,3 +8,4 @@ positive_case: "pos"
 case_invariant_comparison: true
 search_length: 10
 search_from_end: false
+potential_sequence_lengths: [1024, 1536, 2048]

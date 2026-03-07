@@ -5,7 +5,7 @@ from attr import dataclass
 from datasets import DatasetDict
 
 import wandb
-from classification_trainer.configuration import BaseModelInfo, DatasetInfo, TrainingInfo
+from classification_trainer.configuration import BaseModelInfo, TrainingInfo
 from classification_trainer.configuration.chat_template_info import ChatTemplateInfo
 from classification_trainer.configuration.inference_info import InferenceInfo
 from classification_trainer.helpers.dataset_helper import (
@@ -41,7 +41,6 @@ from classification_trainer.utils.common_paths import CommonPaths
 
 @dataclass
 class SweepCommand(CommmandProtocol):
-    dataset_info: DatasetInfo
     base_model_info: BaseModelInfo
     training_info: TrainingInfo
     inference_info: InferenceInfo
@@ -76,30 +75,41 @@ class SweepCommand(CommmandProtocol):
 
         # --- Create sweep ---
         wandb_config = self.training_info.wandb_config
-        sweep_config = build_sweep_config(self.inference_info)
+        sweep_config = build_sweep_config(self.training_info, self.inference_info)
         sweep_id = wandb.sweep(sweep=sweep_config, project=wandb_config.project)
         logger.report_message(f"[green]Sweep created. ID: {sweep_id}[/green]")
 
         # --- Per-trial function ---
+        _trial_number = 0
+
         def _run_trial() -> None:
+            nonlocal _trial_number
+            _trial_number += 1
+
             try:
                 run = wandb.init(
                     project=wandb_config.project,
                     group=wandb_config.group,
                     job_type=wandb_config.job_type,
                 )
-                logger.report_message(f"[blue]Run Number: {self.count}[/blue]")
+                logger.report_message(f"[blue]Trial {_trial_number} of {self.count}[/blue]")
                 trial_training_info = apply_trial_sft_parameters(self.training_info, dict(wandb.config))
+
+                # Display trial parameters for verification
+                param_lines = "\n".join(
+                    f"  {k}: {v}" for k, v in trial_training_info.sft_parameters.to_dict().items()
+                )
+                logger.report_message(f"[blue]Trial parameters:\n{param_lines}[/blue]")
                 output_dir = str(CommonPaths.get().sweep_trial_outputs(self.training_info.model_name, run.id))
 
                 tokenizer = load_tokenizer_from_hf(self.base_model_info)
 
-                raw_datasets: DatasetDict = load_dataset_from_hf(self.dataset_info)
-                dataset_info = self.dataset_info
-                if self.dataset_info.validation_split_name is None:
+                raw_datasets: DatasetDict = load_dataset_from_hf(self.training_info.dataset_info)
+                dataset_info = self.training_info.dataset_info
+                if self.training_info.dataset_info.validation_split_name is None:
                     raw_datasets, dataset_info = split_dataset(
-                        self.dataset_info,
-                        raw_datasets[self.dataset_info.training_split_name],
+                        self.training_info.dataset_info,
+                        raw_datasets[self.training_info.dataset_info.training_split_name],
                         0.1,
                         0.1,
                         trial_training_info.seed,

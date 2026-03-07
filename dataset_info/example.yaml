@@ -93,3 +93,16 @@ search_length: -1
 # of the beginning. Only relevant when search_length > -1.
 # Default: false
 search_from_end: false
+
+
+# ---------------------------------------------------------------------------
+# Dataset analysis settings (OPTIONAL — used by the analyze-dataset command)
+# ---------------------------------------------------------------------------
+
+# List of token-count thresholds to check coverage for when running the
+# analyze-dataset command. For each value, the command reports what percentage
+# of the dataset fits within that sequence length and how many samples are lost.
+# Format: list of positive integers.
+# Default (when omitted): [1024, 1536, 2048]
+# Example: [512, 1024, 1536, 2048, 4096]
+potential_sequence_lengths: [1024, 1536, 2048]
