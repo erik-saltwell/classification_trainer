@@ -480,7 +480,7 @@ def tokenize_training_column(
             max_length=max_seq_len,
             add_special_tokens=False,
         )
-        return {
+        return {  # pyright:ignore
             ids_col: encodings["input_ids"],
             mask_col: encodings["attention_mask"],
         }
@@ -554,7 +554,7 @@ def tokenize_eval_column(
             cleaned,
             add_special_tokens=chat_template_info.add_special_tokens,
         )
-        return {
+        return {  # pyright: ignore
             ids_col: encodings["input_ids"],
             mask_col: encodings["attention_mask"],
         }
