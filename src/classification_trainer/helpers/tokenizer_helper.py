@@ -1,14 +1,12 @@
-from typing import TYPE_CHECKING, cast
+from __future__ import annotations
 
-if TYPE_CHECKING:
-    from transformers import PreTrainedTokenizerBase
+import unsloth  # isort: skip
+
+from typing import cast
+
+from transformers import PreTrainedTokenizerBase
 
 from classification_trainer.configuration import BaseModelInfo
-
-try:
-    import unsloth  # isort: skip
-except Exception:
-    unsloth = None  # type: ignore[assignment]
 
 
 def load_tokenizer_from_hf(base_model_info: BaseModelInfo) -> PreTrainedTokenizerBase:

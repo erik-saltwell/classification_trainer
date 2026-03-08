@@ -8,10 +8,10 @@ from trl.trainer.sft_config import SFTConfig
 
 from classification_trainer.utils.text_fragments import FragmentID, get_fragment
 
-from .base_model_info import BaseModelInfo
+from .base_model_info import BaseModelInfo, load_base_model_info
 from .dataset_info import DatasetInfo
-from .inference_info import InferenceInfo
-from .publishing_info import PublishingInfo
+from .inference_info import InferenceInfo, load_inference_info
+from .publishing_info import PublishingInfo, load_publishing_info
 from .sft_parameters import SFTParameters
 from .sweep_config import SweepConfig
 from .wandb_config import WandbConfig
@@ -57,21 +57,16 @@ class TrainingInfo(BaseModel):
 
     @property
     def base_model_info(self) -> BaseModelInfo:
-        from classification_trainer.configuration.base_model_info import load_base_model_info
-
         return load_base_model_info(self.base_model)
 
     @property
     def inference_info(self) -> InferenceInfo:
-        from classification_trainer.configuration.inference_info import load_inference_info
-
         return load_inference_info(self.inference)
 
     @property
     def publishing_info(self) -> PublishingInfo | None:
         if self.publishing is None:
             return None
-        from classification_trainer.configuration.publishing_info import load_publishing_info
 
         return load_publishing_info(self.publishing)
 
