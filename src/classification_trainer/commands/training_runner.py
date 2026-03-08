@@ -195,7 +195,7 @@ class TrainingRunner:
         if self._model is None or self._tokenizer is None:
             raise ValueError("load_model must be called before computing batch size.  Model/Tokenizer are None.")
 
-        base_test_info: TrainingInfo = self.training_info.model_copy(
+        self.training_info = self.training_info.model_copy(
             update={
                 "training_length_type": TrainingLengthType.STEPS,
                 "gradient_accumulation_steps": 1,
@@ -209,10 +209,10 @@ class TrainingRunner:
         last_good, last_failed = 0, None
         while (candidate := TrainingRunner._next_batch_size_candidate(last_good, last_failed)) is not None:
             try:
-                test_info = base_test_info.model_copy(update={"per_device_batch_size": candidate})
+                self.training_info = self.training_info.model_copy(update={"per_device_batch_size": candidate})
                 trainer = create_trainer(
                     self.dataset_info,
-                    test_info,
+                    self.training_info,
                     self._model,
                     self._tokenizer,
                     self._data_splits.training_dataset,
@@ -228,10 +228,5 @@ class TrainingRunner:
             except torch.cuda.OutOfMemoryError:
                 flush_gpu_memory()
                 last_failed = candidate
-
-        if last_good == 0:
-            logger.report_message("No batch size fits in GPU memory — even batch size 1 caused OOM.")
-        else:
-            logger.report_message(f"Largest successful batch size: {last_good}")
 
         return last_good
