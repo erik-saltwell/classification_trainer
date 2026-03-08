@@ -78,7 +78,10 @@ def create_trainer(
     eval_dataset: Dataset | None = None,
     output_dir: str | None = None,
 ) -> SFTTrainer:
-    config: SFTConfig = training_info.create_sft_config(dataset_info, report_to_wandb, output_dir)
+    pre_tokenized = dataset_info.tokenized_training_column_name in train_dataset.column_names
+    config: SFTConfig = training_info.create_sft_config(
+        dataset_info, report_to_wandb, output_dir, pre_tokenized=pre_tokenized
+    )
     trainer: SFTTrainer = SFTTrainer(
         model=model,
         processing_class=tokenizer,
@@ -89,7 +92,7 @@ def create_trainer(
     if report_to_wandb:
         trainer.remove_callback(WandbCallback)
         trainer.add_callback(_NoFinishWandbCallback())
-    if training_info.train_on_outputs_only:
+    if training_info.train_on_outputs_only and not pre_tokenized:
         chat_template_info: ChatTemplateInfo = training_info.base_model_info.chat_template_info
 
         trainer = train_on_responses_only(

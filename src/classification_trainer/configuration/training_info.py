@@ -107,7 +107,11 @@ class TrainingInfo(BaseModel):
         return self.model_dump(mode="json")
 
     def create_sft_config(
-        self, dataset_info: DatasetInfo, report_to_wandb: bool, output_dir: str | None = None
+        self,
+        dataset_info: DatasetInfo,
+        report_to_wandb: bool,
+        output_dir: str | None = None,
+        pre_tokenized: bool = False,
     ) -> SFTConfig:
         max_steps: int = -1 if self.training_length_type == TrainingLengthType.EPOCHS else round(self.training_length)
         max_epochs: float = -1.0 if self.training_length_type == TrainingLengthType.STEPS else self.training_length

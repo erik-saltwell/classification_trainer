@@ -7,6 +7,8 @@ import typer
 from pydantic import ValidationError
 from rich.console import Console
 
+from classification_trainer.configuration.dataset_info import DatasetInfo
+
 T = TypeVar("T")
 
 _INVALID_DIR_CHARS: frozenset[str] = frozenset('<>:"/\\|?*\0')
@@ -32,6 +34,30 @@ def load_config_or_exit(loader: Callable[[str], T], name: str, label: str, conso
     except ValidationError as e:
         console.print(f"[red]Invalid {label} '{name}':[/red]\n{e}")
         raise typer.Exit(code=1) from None
+
+
+def validate_no_reserved_column_conflicts(dataset_info: DatasetInfo, console: Console) -> None:
+    """Validate that user-configured column names don't collide with reserved generated column names.
+
+    The 'labels' column (and other tokenization columns) are reserved by SFTTrainer/HuggingFace.
+    If a source dataset uses one of these as its own column name, training will silently break.
+    """
+    reserved = set(dataset_info.get_generated_column_names())
+    user_columns = {
+        "label_column_name": dataset_info.label_column_name,
+        "content_column_name": dataset_info.content_column_name,
+    }
+    conflicts: list[str] = []
+    for field_name, col_value in user_columns.items():
+        if col_value in reserved:
+            conflicts.append(f"  {field_name}='{col_value}' conflicts with reserved column '{col_value}'")
+    if conflicts:
+        console.print(
+            "[red]Error:[/red] Dataset column name conflicts with reserved names "
+            "used during training/tokenization:\n" + "\n".join(conflicts) + "\n\n"
+            "Rename the conflicting column in your dataset_info YAML to avoid collisions."
+        )
+        raise typer.Exit(code=1)
 
 
 def _validate_file_exists(path: Path, label: str) -> list[str]:

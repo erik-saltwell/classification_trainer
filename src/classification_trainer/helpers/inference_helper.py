@@ -143,6 +143,28 @@ def generate_label_texts(
     return [generate_label_text(model, tokenizer, prompt, inference_info, template) for prompt in prompt_texts]
 
 
+@torch.inference_mode()
+def generate_label_text_from_tokens(
+    model: PreTrainedModel,
+    tokenizer: PreTrainedTokenizerBase,
+    input_ids: list[int],
+    attention_mask: list[int],
+    inference_info: InferenceInfo,
+    template: ChatTemplateInfo,
+) -> str:
+    """Generate a label from pre-tokenized input (single row)."""
+    device = next(model.parameters()).device
+    enc = {
+        "input_ids": torch.tensor([input_ids], device=device),
+        "attention_mask": torch.tensor([attention_mask], device=device),
+    }
+    eos_token_id: int | list[int] | None = _compute_eos_token_id(tokenizer, template)
+    pad_token_id = get_pad_token_id(tokenizer)
+    gen_kwargs = _build_generate_kwargs(enc, inference_info, tokenizer, eos_token_id, pad_token_id)
+    out_ids = model.generate(**gen_kwargs)  # type: ignore
+    return _decode_and_trim_generated_texts(tokenizer, enc, out_ids, template)[0]
+
+
 def add_inferred_column(
     dataset: Dataset,
     dataset_info: DatasetInfo,
@@ -154,27 +176,45 @@ def add_inferred_column(
     load_from_cache_file: bool = False,
     logger: "LoggingProtocol | None" = None,
 ) -> Dataset:
-    prompt_column_name = dataset_info.evaluation_instructions_column_name
     output_column_name = dataset_info.prediction_column_name
+    eval_ids_col = dataset_info.tokenized_eval_column_name
+    eval_mask_col = dataset_info.tokenized_eval_attention_maske_column_name
+    pre_tokenized = eval_ids_col in dataset.column_names
 
-    if prompt_column_name not in dataset.column_names:
-        raise KeyError(f"Prompt column '{prompt_column_name}' not found in dataset columns: {dataset.column_names}")
+    if not pre_tokenized:
+        prompt_column_name = dataset_info.evaluation_instructions_column_name
+        if prompt_column_name not in dataset.column_names:
+            raise KeyError(f"Prompt column '{prompt_column_name}' not found in dataset columns: {dataset.column_names}")
 
-    if logger is None:
-
-        def _infer_batch(batch: dict) -> dict:
-            prompt_texts: list[str] = batch[prompt_column_name]
-            preds: list[str] = generate_label_texts(
+    def _infer_batch_from_tokens(batch: dict) -> dict:
+        preds: list[str] = [
+            generate_label_text_from_tokens(
                 model=model,
                 tokenizer=tokenizer,
-                prompt_texts=prompt_texts,
+                input_ids=ids,
+                attention_mask=mask,
                 inference_info=inference_info,
                 template=template,
             )
-            return {output_column_name: preds}
+            for ids, mask in zip(batch[eval_ids_col], batch[eval_mask_col], strict=True)
+        ]
+        return {output_column_name: preds}
 
+    def _infer_batch_from_text(batch: dict) -> dict:
+        prompt_texts: list[str] = batch[prompt_column_name]
+        preds: list[str] = generate_label_texts(
+            model=model,
+            tokenizer=tokenizer,
+            prompt_texts=prompt_texts,
+            inference_info=inference_info,
+            template=template,
+        )
+        return {output_column_name: preds}
+
+    if logger is None:
+        infer_fn = _infer_batch_from_tokens if pre_tokenized else _infer_batch_from_text
         return dataset.map(
-            _infer_batch,
+            infer_fn,
             batched=True,
             batch_size=batch_size,
             load_from_cache_file=load_from_cache_file,
@@ -182,22 +222,19 @@ def add_inferred_column(
 
     with logger.progress("Batched inference", total=len(dataset)) as progress:
 
-        def _infer_batch(batch: dict) -> dict:
-            prompt_texts: list[str] = batch[prompt_column_name]
-            preds: list[str] = generate_label_texts(
-                model=model,
-                tokenizer=tokenizer,
-                prompt_texts=prompt_texts,
-                inference_info=inference_info,
-                template=template,
-            )
-            progress.advance(len(prompt_texts))
-            return {output_column_name: preds}
+        def _infer_batch_with_progress(batch: dict) -> dict:
+            if pre_tokenized:
+                result = _infer_batch_from_tokens(batch)
+                progress.advance(len(batch[eval_ids_col]))
+            else:
+                result = _infer_batch_from_text(batch)
+                progress.advance(len(batch[prompt_column_name]))
+            return result
 
         disable_progress_bars()
         try:
             return dataset.map(
-                _infer_batch,
+                _infer_batch_with_progress,
                 batched=True,
                 batch_size=batch_size,
                 load_from_cache_file=load_from_cache_file,

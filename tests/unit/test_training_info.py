@@ -113,3 +113,30 @@ def test_publishing_info_raises_on_missing_config(monkeypatch: pytest.MonkeyPatc
     info = TrainingInfo(**data)
     with pytest.raises(FileNotFoundError):
         _ = info.publishing_info
+
+
+# ---------------------------------------------------------------------------
+# create_sft_config — pre_tokenized parameter
+# ---------------------------------------------------------------------------
+
+
+def test_create_sft_config_pre_tokenized_true_sets_text_field_none(monkeypatch: pytest.MonkeyPatch) -> None:
+    from unittest.mock import MagicMock
+
+    monkeypatch.chdir(_PROJECT_ROOT)
+    info = TrainingInfo(**_BASE_DICT)
+    dataset_info = MagicMock()
+    dataset_info.training_column_name = "ds_training"
+    config = info.create_sft_config(dataset_info, report_to_wandb=False, pre_tokenized=True)
+    assert config.dataset_text_field == dataset_info.training_column_name
+
+
+def test_create_sft_config_pre_tokenized_false_sets_text_field(monkeypatch: pytest.MonkeyPatch) -> None:
+    from unittest.mock import MagicMock
+
+    monkeypatch.chdir(_PROJECT_ROOT)
+    info = TrainingInfo(**_BASE_DICT)
+    dataset_info = MagicMock()
+    dataset_info.training_column_name = "ds_training"
+    config = info.create_sft_config(dataset_info, report_to_wandb=False, pre_tokenized=False)
+    assert config.dataset_text_field == "ds_training"

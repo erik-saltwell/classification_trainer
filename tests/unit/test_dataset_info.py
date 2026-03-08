@@ -70,3 +70,15 @@ def test_sequence_lengths_negative_rejected() -> None:
 def test_sequence_lengths_mixed_valid_and_invalid_rejected() -> None:
     with pytest.raises(ValidationError, match="positive"):
         DatasetInfo(**{**_MINIMAL, "potential_sequence_lengths": [1024, -1, 2048]})
+
+
+# ---------------------------------------------------------------------------
+# get_generated_column_names — pre-tokenization columns
+# ---------------------------------------------------------------------------
+
+
+def test_generated_column_names_include_pretokenized_columns() -> None:
+    info = DatasetInfo(**_MINIMAL)
+    names = list(info.get_generated_column_names())
+    for col in ("input_ids", "attention_mask", "labels", "eval_input_ids", "eval_attention_mask"):
+        assert col in names, f"Expected '{col}' in generated column names"

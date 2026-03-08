@@ -25,6 +25,12 @@ _TEST_SPLIT_NAME: str = "test"
 _VALIDATION_SPLIT_NAME: str = "validation"
 _CLASSIFICATION_RESULT_COLUMN_NAME: str = "classification_result"
 
+_TOKENIZED_TRAINING_COLUMN_NAME = "input_ids"
+_TOKENIZED_TRAINING_ATTENTION_MASK_COLUMN_NAME = "attention_mask"
+_MASKED_TOKENIZED_TRAINING_COLUMN_NAME = "labels"
+_TOKENIZED_EVAL_COLUMN_NAME = "eval_input_ids"
+_TOKENIZED_EVAL_ATTENTION_MASK_COLUMN_NAME = "eval_attention_mask"
+
 
 class DatasetInfo(BaseModel):
     """Validated metadata for a HuggingFace dataset."""
@@ -57,6 +63,31 @@ class DatasetInfo(BaseModel):
         yield self.string_labels_column_name
         yield self.evaluation_instructions_column_name
         yield self.training_column_name
+        yield self.tokenized_training_column_name
+        yield self.tokenized_training_attention_maske_column_name
+        yield self.masked_tokenized_training_column_name
+        yield self.tokenized_eval_column_name
+        yield self.tokenized_eval_attention_maske_column_name
+
+    @property
+    def masked_tokenized_training_column_name(sefl) -> str:
+        return _MASKED_TOKENIZED_TRAINING_COLUMN_NAME
+
+    @property
+    def tokenized_eval_attention_maske_column_name(self) -> str:
+        return _TOKENIZED_EVAL_ATTENTION_MASK_COLUMN_NAME
+
+    @property
+    def tokenized_eval_column_name(self) -> str:
+        return _TOKENIZED_EVAL_COLUMN_NAME
+
+    @property
+    def tokenized_training_attention_maske_column_name(self) -> str:
+        return _TOKENIZED_TRAINING_ATTENTION_MASK_COLUMN_NAME
+
+    @property
+    def tokenized_training_column_name(self) -> str:
+        return _TOKENIZED_TRAINING_COLUMN_NAME
 
     @property
     def classification_result_column_name(self) -> str:

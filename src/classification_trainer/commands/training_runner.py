@@ -31,6 +31,7 @@ from classification_trainer.utils.common_paths import CommonPaths
 class TrainingRunner:
     training_info: TrainingInfo
     dataset_info: DatasetInfo
+    pretokenize: bool = False
     _data_splits: DatasetSplits | None = None
     _model: PreTrainedModel | None = None
     _tokenizer: PreTrainedTokenizerBase | None = None
@@ -39,7 +40,7 @@ class TrainingRunner:
         datasets: DatasetDict = load_dataset_from_hf(self.dataset_info)
         tokenizer: PreTrainedTokenizerBase = load_tokenizer_from_hf(self.training_info.base_model_info)
         self._data_splits, self.dataset_info = prepare_split_data(
-            self.training_info, self.dataset_info, datasets, tokenizer
+            self.training_info, self.dataset_info, datasets, tokenizer, pretokenize=self.pretokenize
         )
 
     def load_model(self, logger: LoggingProtocol) -> None:

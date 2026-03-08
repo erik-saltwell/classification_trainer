@@ -25,7 +25,7 @@ from classification_trainer.configuration import (
 from classification_trainer.protocols.logging_protocol import CompositeLogger, LoggingProtocol
 from classification_trainer.utils.logging_config import configure_logging
 
-from .console_validation import load_config_or_exit
+from .console_validation import load_config_or_exit, validate_no_reserved_column_conflicts
 from .file_logging_protocol import FileLogger
 from .rich_logging_protocol import RichConsoleLogger
 
@@ -73,6 +73,7 @@ def analyze_sequence_length(
 
     tr_info = load_config_or_exit(load_training_info, training_info, "training info", console)
     ds_info = load_config_or_exit(load_dataset_info, dataset, "dataset info", console)
+    validate_no_reserved_column_conflicts(ds_info, console)
 
     start = datetime.now()
     AnalyzeDatasetCommand(
@@ -93,6 +94,7 @@ def train(
 
     tr_info = load_config_or_exit(load_training_info, training_info, "training info", console)
     ds_info = load_config_or_exit(load_dataset_info, dataset, "dataset info", console)
+    validate_no_reserved_column_conflicts(ds_info, console)
 
     start = datetime.now()
     TrainCommand(
@@ -146,6 +148,7 @@ def compute_batch_size(
 
     tr_info = load_config_or_exit(load_training_info, training_info, "training info", console)
     ds_info = load_config_or_exit(load_dataset_info, dataset, "dataset info", console)
+    validate_no_reserved_column_conflicts(ds_info, console)
 
     start = datetime.now()
     ComputeBatchSizeCommand(
@@ -168,6 +171,7 @@ def sweep(
 
     tr_info = load_config_or_exit(load_training_info, training_info, "training info", console)
     ds_info = load_config_or_exit(load_dataset_info, dataset, "dataset info", console)
+    validate_no_reserved_column_conflicts(ds_info, console)
 
     start = datetime.now()
     SweepCommand(

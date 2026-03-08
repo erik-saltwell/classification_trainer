@@ -7,13 +7,17 @@ from datasets import ClassLabel, Dataset, DatasetDict, Features, Value
 
 from classification_trainer.configuration import ChatTemplateInfo, DatasetInfo
 from classification_trainer.helpers.dataset_helper import (
+    _find_last_subsequence,
     add_eval_column,
     add_string_label_column,
     add_training_column,
+    apply_response_masking,
     make_stress_split,
     rebalance_minority_class,
     split_dataset,
     take,
+    tokenize_eval_column,
+    tokenize_training_column,
     union_datasets,
     validate_training_column,
 )
@@ -601,3 +605,173 @@ def test_validate_multiple_violations_reported_together(
     assert "EOS" in msg
     assert "response separator" in msg
     assert "instruction separator" in msg
+
+
+# ─── _find_last_subsequence ─────────────────────────────────────────────────
+
+
+def test_find_last_subsequence_at_end() -> None:
+    assert _find_last_subsequence([1, 2, 3, 4, 5], [4, 5]) == 3
+
+
+def test_find_last_subsequence_at_start() -> None:
+    assert _find_last_subsequence([1, 2, 3, 4, 5], [1, 2]) == 0
+
+
+def test_find_last_subsequence_in_middle() -> None:
+    assert _find_last_subsequence([1, 2, 3, 4, 5], [3]) == 2
+
+
+def test_find_last_subsequence_not_found() -> None:
+    assert _find_last_subsequence([1, 2, 3], [7, 8]) is None
+
+
+def test_find_last_subsequence_multiple_returns_last() -> None:
+    assert _find_last_subsequence([1, 2, 1, 2, 3], [1, 2]) == 2
+
+
+def test_find_last_subsequence_full_match() -> None:
+    assert _find_last_subsequence([1, 2, 3], [1, 2, 3]) == 0
+
+
+# ─── tokenize_training_column ──────────────────────────────────────────────
+
+
+@pytest.fixture
+def tokenizer_for_pretok() -> MagicMock:
+    """A mock tokenizer that returns simple integer token IDs for tokenize_training_column tests."""
+    tok = MagicMock()
+
+    def _call(texts, truncation=False, max_length=None, add_special_tokens=True):
+        input_ids = []
+        attention_masks = []
+        for text in texts:
+            # Simple: each character becomes a token ID (ord value)
+            ids = [ord(c) for c in text]
+            if truncation and max_length is not None:
+                ids = ids[:max_length]
+            input_ids.append(ids)
+            attention_masks.append([1] * len(ids))
+        return {"input_ids": input_ids, "attention_mask": attention_masks}
+
+    tok.side_effect = _call
+    return tok
+
+
+def test_tokenize_training_column_adds_columns(info: DatasetInfo, tokenizer_for_pretok: MagicMock) -> None:
+    ds = Dataset.from_dict({info.training_column_name: ["hello", "world"]})
+    result = tokenize_training_column(info, ds, tokenizer_for_pretok, 1024)
+    assert "input_ids" in result.column_names
+    assert "attention_mask" in result.column_names
+
+
+def test_tokenize_training_column_truncation(info: DatasetInfo, tokenizer_for_pretok: MagicMock) -> None:
+    ds = Dataset.from_dict({info.training_column_name: ["abcdefghij"]})
+    result = tokenize_training_column(info, ds, tokenizer_for_pretok, 5)
+    assert len(result[0]["input_ids"]) == 5
+
+
+def test_tokenize_training_column_no_special_tokens(info: DatasetInfo, tokenizer_for_pretok: MagicMock) -> None:
+    ds = Dataset.from_dict({info.training_column_name: ["test"]})
+    tokenize_training_column(info, ds, tokenizer_for_pretok, 1024)
+    call_kwargs = tokenizer_for_pretok.call_args
+    assert call_kwargs.kwargs.get("add_special_tokens") is False or call_kwargs[1].get("add_special_tokens") is False
+
+
+# ─── apply_response_masking ─────────────────────────────────────────────────
+
+
+@pytest.fixture
+def masking_tokenizer() -> MagicMock:
+    """Mock tokenizer for apply_response_masking tests. Separator tokens are [98, 99]."""
+    tok = MagicMock()
+    tok.encode.return_value = [98, 99]  # separator token IDs
+    return tok
+
+
+@pytest.fixture
+def masking_template() -> ChatTemplateInfo:
+    return ChatTemplateInfo(instruction_separator="<inst>", response_separator="<resp>")
+
+
+def test_apply_response_masking_masks_before_separator(
+    info: DatasetInfo, masking_tokenizer: MagicMock, masking_template: ChatTemplateInfo
+) -> None:
+    # input_ids: [10, 20, 98, 99, 30, 40] — separator at index 2-3
+    ds = Dataset.from_dict({"input_ids": [[10, 20, 98, 99, 30, 40]]})
+    result = apply_response_masking(info, ds, masking_tokenizer, masking_template)
+    labels = result[0]["labels"]
+    # Before and including separator should be -100
+    assert labels[:4] == [-100, -100, -100, -100]
+    # After separator should be original input_ids
+    assert labels[4:] == [30, 40]
+
+
+def test_apply_response_masking_separator_not_found(
+    info: DatasetInfo, masking_tokenizer: MagicMock, masking_template: ChatTemplateInfo
+) -> None:
+    ds = Dataset.from_dict({"input_ids": [[10, 20, 30]]})
+    result = apply_response_masking(info, ds, masking_tokenizer, masking_template)
+    labels = result[0]["labels"]
+    assert labels == [-100, -100, -100]
+
+
+def test_apply_response_masking_multiple_occurrences_uses_last(
+    info: DatasetInfo, masking_tokenizer: MagicMock, masking_template: ChatTemplateInfo
+) -> None:
+    # Two occurrences of [98, 99]: at index 1-2 and 4-5
+    ds = Dataset.from_dict({"input_ids": [[10, 98, 99, 20, 98, 99, 30]]})
+    result = apply_response_masking(info, ds, masking_tokenizer, masking_template)
+    labels = result[0]["labels"]
+    # Everything up to and including second separator (index 0-5) should be -100
+    assert labels[:6] == [-100, -100, -100, -100, -100, -100]
+    assert labels[6:] == [30]
+
+
+# ─── tokenize_eval_column ──────────────────────────────────────────────────
+
+
+@pytest.fixture
+def eval_tokenizer() -> MagicMock:
+    tok = MagicMock()
+
+    def _call(texts, add_special_tokens=True):
+        input_ids = [[ord(c) for c in text] for text in texts]
+        attention_masks = [[1] * len(ids) for ids in input_ids]
+        return {"input_ids": input_ids, "attention_mask": attention_masks}
+
+    tok.side_effect = _call
+    return tok
+
+
+@pytest.fixture
+def eval_template() -> ChatTemplateInfo:
+    return ChatTemplateInfo(
+        instruction_separator="<inst>",
+        response_separator="<resp>",
+        assistant_newline=False,
+    )
+
+
+def test_tokenize_eval_column_adds_columns(
+    info: DatasetInfo, eval_tokenizer: MagicMock, eval_template: ChatTemplateInfo
+) -> None:
+    ds = Dataset.from_dict({info.evaluation_instructions_column_name: ["prompt1", "prompt2"]})
+    result = tokenize_eval_column(info, ds, eval_tokenizer, eval_template)
+    assert "eval_input_ids" in result.column_names
+    assert "eval_attention_mask" in result.column_names
+
+
+def test_tokenize_eval_column_clean_prompt_ending_applied(info: DatasetInfo, eval_tokenizer: MagicMock) -> None:
+    template = ChatTemplateInfo(
+        instruction_separator="<inst>",
+        response_separator="<resp>",
+        assistant_newline=True,
+    )
+    # Prompt that ends with response separator (stripped) — should get newline appended
+    ds = Dataset.from_dict({info.evaluation_instructions_column_name: ["hello<resp>"]})
+    _ = tokenize_eval_column(info, ds, eval_tokenizer, template)
+    # The tokenizer should have received the cleaned text (with newline)
+    call_args = eval_tokenizer.call_args
+    cleaned_texts = call_args[0][0]
+    assert cleaned_texts[0].endswith("\n")

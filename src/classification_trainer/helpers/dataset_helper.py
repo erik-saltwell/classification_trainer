@@ -459,6 +459,109 @@ def add_eval_column(
     return dataset.map(_apply_template, batched=True)
 
 
+def tokenize_training_column(
+    dataset_info: DatasetInfo,
+    dataset: Dataset,
+    tokenizer: PreTrainedTokenizerBase,
+    max_seq_len: int,
+) -> Dataset:
+    """Tokenize the training text column, adding ``input_ids`` and ``attention_mask`` columns.
+
+    Uses ``add_special_tokens=False`` because the chat template already includes special tokens.
+    """
+    col_name = dataset_info.training_column_name
+    ids_col = dataset_info.tokenized_training_column_name
+    mask_col = dataset_info.tokenized_training_attention_maske_column_name
+
+    def _tokenize(batch: dict[str, list[Any]]) -> dict[str, list[Any]]:
+        encodings = tokenizer(
+            batch[col_name],
+            truncation=True,
+            max_length=max_seq_len,
+            add_special_tokens=False,
+        )
+        return {
+            ids_col: encodings["input_ids"],
+            mask_col: encodings["attention_mask"],
+        }
+
+    return dataset.map(_tokenize, batched=True)
+
+
+def _find_last_subsequence(sequence: list[int], subsequence: list[int]) -> int | None:
+    """Return the start index of the last occurrence of *subsequence* in *sequence*, or ``None``."""
+    sub_len = len(subsequence)
+    for i in range(len(sequence) - sub_len, -1, -1):
+        if sequence[i : i + sub_len] == subsequence:
+            return i
+    return None
+
+
+def apply_response_masking(
+    dataset_info: DatasetInfo,
+    dataset: Dataset,
+    tokenizer: PreTrainedTokenizerBase,
+    chat_template_info: ChatTemplateInfo,
+) -> Dataset:
+    """Add a ``labels`` column with instruction tokens masked to -100.
+
+    For each row, finds the response separator token subsequence in ``input_ids``
+    and sets all positions up to and including the separator to -100. Positions
+    after the separator retain their ``input_ids`` values (the actual response).
+    """
+    sep_ids: list[int] = tokenizer.encode(chat_template_info.response_separator, add_special_tokens=False)
+    ids_col = dataset_info.tokenized_training_column_name
+    labels_col = dataset_info.masked_tokenized_training_column_name
+
+    def _mask(batch: dict[str, list[Any]]) -> dict[str, list[Any]]:
+        all_labels: list[list[int]] = []
+        for input_ids in batch[ids_col]:
+            labels = list(input_ids)
+            sep_start = _find_last_subsequence(input_ids, sep_ids)
+            if sep_start is not None:
+                mask_end = sep_start + len(sep_ids)
+                for i in range(mask_end):
+                    labels[i] = -100
+            else:
+                labels = [-100] * len(labels)
+            all_labels.append(labels)
+        return {labels_col: all_labels}
+
+    return dataset.map(_mask, batched=True)
+
+
+def _clean_prompt_ending(prompt_text: str, template: ChatTemplateInfo) -> str:
+    """Ensure prompt ends with a newline after the response separator when required."""
+    if template.assistant_newline and prompt_text.rstrip().endswith(template.response_separator.rstrip()):
+        return prompt_text.rstrip() + "\n"
+    return prompt_text
+
+
+def tokenize_eval_column(
+    dataset_info: DatasetInfo,
+    dataset: Dataset,
+    tokenizer: PreTrainedTokenizerBase,
+    chat_template_info: ChatTemplateInfo,
+) -> Dataset:
+    """Tokenize eval prompts, storing as ``eval_input_ids`` and ``eval_attention_mask`` columns."""
+    col_name = dataset_info.evaluation_instructions_column_name
+    ids_col = dataset_info.tokenized_eval_column_name
+    mask_col = dataset_info.tokenized_eval_attention_maske_column_name
+
+    def _tokenize(batch: dict[str, list[Any]]) -> dict[str, list[Any]]:
+        cleaned = [_clean_prompt_ending(text, chat_template_info) for text in batch[col_name]]
+        encodings = tokenizer(
+            cleaned,
+            add_special_tokens=chat_template_info.add_special_tokens,
+        )
+        return {
+            ids_col: encodings["input_ids"],
+            mask_col: encodings["attention_mask"],
+        }
+
+    return dataset.map(_tokenize, batched=True)
+
+
 def label_distribution(
     dataset_info: DatasetInfo,
     dataset: Dataset,
@@ -519,12 +622,23 @@ def prep_dataset(
     dataset_info: DatasetInfo,
     dataset: Dataset,
     tokenizer: PreTrainedTokenizerBase,
+    pretokenize: bool = False,
 ) -> Dataset:
     return_dataset = prep_classification_dataset_for_training(
         dataset_info, training_info, dataset, tokenizer, base_model_info.chat_template_info
     )
     return_dataset = add_eval_column(dataset_info, training_info, return_dataset, tokenizer)
-
+    if pretokenize:
+        return_dataset = tokenize_training_column(
+            dataset_info, return_dataset, tokenizer, training_info.max_sequence_length
+        )
+        if training_info.train_on_outputs_only:
+            return_dataset = apply_response_masking(
+                dataset_info, return_dataset, tokenizer, base_model_info.chat_template_info
+            )
+        return_dataset = tokenize_eval_column(
+            dataset_info, return_dataset, tokenizer, base_model_info.chat_template_info
+        )
     return return_dataset
 
 
@@ -533,6 +647,7 @@ def prepare_split_data(
     dataset_info: DatasetInfo,
     datasets: DatasetDict,
     tokenizer: PreTrainedTokenizerBase,
+    pretokenize: bool = False,
 ) -> tuple[DatasetSplits, DatasetInfo]:
     datasets, dataset_info = ensure_splits(dataset_info, datasets)
     training_dataset = prep_dataset(
@@ -541,9 +656,15 @@ def prepare_split_data(
         dataset_info,
         datasets[dataset_info.training_split_name],
         tokenizer,
+        pretokenize=pretokenize,
     )
     test_dataset = prep_dataset(
-        training_info, training_info.base_model_info, dataset_info, datasets[dataset_info.test_split_name], tokenizer
+        training_info,
+        training_info.base_model_info,
+        dataset_info,
+        datasets[dataset_info.test_split_name],
+        tokenizer,
+        pretokenize=pretokenize,
     )
     validation_dataset = prep_dataset(
         training_info,
@@ -551,6 +672,7 @@ def prepare_split_data(
         dataset_info,
         datasets[dataset_info.validation_split_name],
         tokenizer,
+        pretokenize=pretokenize,
     )
     return DatasetSplits(
         training_dataset=training_dataset, test_dataset=test_dataset, validation_dataset=validation_dataset
