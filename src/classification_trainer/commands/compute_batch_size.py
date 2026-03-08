@@ -1,20 +1,17 @@
 from dataclasses import dataclass
 
 import typer
-from datasets import Dataset, DatasetDict
+from datasets import Dataset
 from transformers import PreTrainedTokenizerBase
 from transformers.utils import logging as hf_logging
 
+from classification_trainer.commands.training_runner import TrainingRunner
 from classification_trainer.configuration import DatasetInfo, TrainingInfo
-from classification_trainer.helpers.batch_size_helper import find_max_batch_size
 from classification_trainer.helpers.dataset_helper import (
-    load_dataset_from_hf,
     make_stress_split,
     prep_classification_dataset_for_training,
 )
-from classification_trainer.helpers.tokenizer_helper import load_tokenizer_from_hf
 from classification_trainer.protocols import CommandProtocol, LoggingProtocol
-from classification_trainer.utils import flush_gpu_memory
 
 
 @dataclass
@@ -22,31 +19,19 @@ class ComputeBatchSizeCommand(CommandProtocol):
     training_info: TrainingInfo
     dataset_info: DatasetInfo
     stress_set_rowcount: int
+    pretokenize: bool
+
+    def minimize_hf_output(self) -> None:
+        hf_logging.disable_progress_bar()
+        hf_logging.set_verbosity_error()
 
     def execute(self, logger: LoggingProtocol) -> None:
         try:
-            hf_logging.disable_progress_bar()
-            hf_logging.set_verbosity_error()
-            dataset_info = self.dataset_info
-            datasets: DatasetDict = load_dataset_from_hf(dataset_info)
-            tokenizer: PreTrainedTokenizerBase = load_tokenizer_from_hf(self.training_info.base_model_info)
-            training_dataset: Dataset = datasets[dataset_info.training_split_name]
-            training_dataset = self.prep_for_stress_test(dataset_info, training_dataset, tokenizer, logger)
-            evaluation_dataset = training_dataset
-            if dataset_info.validation_split_name is not None:
-                evaluation_dataset = datasets[dataset_info.validation_split_name]
-                evaluation_dataset = self.prep_for_stress_test(dataset_info, evaluation_dataset, tokenizer, logger)
-
-            del tokenizer
-            flush_gpu_memory()
-            result: int = find_max_batch_size(
-                dataset_info,
-                self.training_info.base_model_info,
-                self.training_info,
-                training_dataset,
-                evaluation_dataset,
-                logger,
-            )
+            self.minimize_hf_output()
+            runner: TrainingRunner = TrainingRunner(self.training_info, self.dataset_info, self.pretokenize)
+            runner.prepare_data(logger)
+            runner.load_model(logger)
+            result: int = runner.compute_max_batch_size(self.stress_set_rowcount, logger)
 
             # P1 — Actionable final output
             if result > 0:

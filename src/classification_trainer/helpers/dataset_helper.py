@@ -481,8 +481,8 @@ def tokenize_training_column(
             add_special_tokens=False,
         )
         return {
-            ids_col: encodings["input_ids"],
-            mask_col: encodings["attention_mask"],
+            ids_col: cast(list[Any], encodings["input_ids"]),
+            mask_col: cast(list[Any], encodings["attention_mask"]),
         }
 
     return dataset.map(_tokenize, batched=True)
@@ -555,8 +555,8 @@ def tokenize_eval_column(
             add_special_tokens=chat_template_info.add_special_tokens,
         )
         return {
-            ids_col: encodings["input_ids"],
-            mask_col: encodings["attention_mask"],
+            ids_col: cast(list[Any], encodings["input_ids"]),
+            mask_col: cast(list[Any], encodings["attention_mask"]),
         }
 
     return dataset.map(_tokenize, batched=True)
