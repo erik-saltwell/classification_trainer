@@ -213,10 +213,10 @@ class TrainingRunner:
                 logger.report_message(f"Probing Batch Size: {candidate}")
                 self.training_info = self.training_info.model_copy(update={"per_device_batch_size": candidate})
                 self.train_model(logger, True)
-                flush_gpu_memory()
                 last_good = candidate
             except torch.cuda.OutOfMemoryError:
-                flush_gpu_memory()
                 last_failed = candidate
+            finally:
+                flush_gpu_memory()
 
         return last_good
