@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from datasets import DatasetDict
+from datasets import Dataset, DatasetDict
 from transformers import PreTrainedModel, PreTrainedTokenizerBase
 from trl.trainer.sft_trainer import SFTTrainer
 
@@ -109,3 +109,21 @@ class TrainingRunner:
         publishing_helper.save_model(
             self._model, self._tokenizer, self.training_info, self.dataset_info, pre_metrics, post_metrics, logger
         )
+
+    @property
+    def training_split(self) -> Dataset:
+        if self._data_splits is None:
+            raise ValueError("Trying to access None data_splits.")
+        return self._data_splits.training_dataset
+
+    @property
+    def validation_split(self) -> Dataset:
+        if self._data_splits is None:
+            raise ValueError("Trying to access None data_splits.")
+        return self._data_splits.validation_dataset
+
+    @property
+    def test_split(self) -> Dataset:
+        if self._data_splits is None:
+            raise ValueError("Trying to access None data_splits.")
+        return self._data_splits.test_dataset

@@ -1,18 +1,11 @@
 import typer
 from attr import dataclass
-from datasets import Dataset, DatasetDict
+from datasets import Dataset
 from transformers import PreTrainedTokenizerBase
 
 from classification_trainer.configuration import DatasetInfo
 from classification_trainer.configuration.training_info import TrainingInfo
-from classification_trainer.helpers.dataset_helper import (
-    add_eval_column,
-    label_distribution,
-    load_dataset_from_hf,
-    log_dataset,
-    prep_classification_dataset_for_training,
-    union_datasets,
-)
+from classification_trainer.helpers.dataset_helper import label_distribution, log_dataset, union_datasets
 from classification_trainer.helpers.token_length_helper import (
     TokenLengthData,
     analyze_token_lengths,
@@ -20,6 +13,8 @@ from classification_trainer.helpers.token_length_helper import (
 )
 from classification_trainer.helpers.tokenizer_helper import load_tokenizer_from_hf
 from classification_trainer.protocols import CommandProtocol, LoggingProtocol
+
+from .training_runner import TrainingRunner
 
 
 @dataclass
@@ -30,34 +25,27 @@ class AnalyzeDatasetCommand(CommandProtocol):
 
     def execute(self, logger: LoggingProtocol) -> None:
         try:
-            dataset_info = self.dataset_info
-            dataset_dict: DatasetDict = load_dataset_from_hf(dataset_info)
-            dataset: Dataset = dataset_dict[dataset_info.training_split_name]
+            logger.report_message(f"[blue]Analyzing Dataset: {self.dataset_info.huggingface_name}...[/blue]")
+            runner: TrainingRunner = TrainingRunner(self.training_info, self.dataset_info)
+            runner.prepare_data(logger)
+            dataset = runner.training_split
             if self.merge_all_splits:
-                dataset = union_datasets(*dataset_dict.values())
-            tokenizer: PreTrainedTokenizerBase = load_tokenizer_from_hf(self.training_info.base_model_info)
-            dataset = prep_classification_dataset_for_training(
-                dataset_info,
-                self.training_info,
-                dataset,
-                tokenizer,
-                self.training_info.base_model_info.chat_template_info,
-                filter_long_content=False,
-            )
-            dataset = add_eval_column(dataset_info, self.training_info, dataset, tokenizer)
-            logger.report_message(f"Sample row for {dataset_info.huggingface_name}")
+                dataset = union_datasets(runner.training_split, runner.test_split, runner.validation_split)
+
+            logger.report_message("Sample row:")
             log_dataset(dataset, logger)
             logger.add_break()
 
-            label_distributions: dict[str, float] = label_distribution(dataset_info, dataset)
-            logger.report_message(f"Label distributions for {dataset_info.huggingface_name}")
+            label_distributions: dict[str, float] = label_distribution(runner.dataset_info, dataset)
+            logger.report_message("Label distributions:")
             logger.report_table_message(label_distributions)
 
-            result: TokenLengthData = analyze_token_lengths(dataset_info, dataset, tokenizer)
+            tokenizer: PreTrainedTokenizerBase = load_tokenizer_from_hf(self.training_info.base_model_info)
+            result: TokenLengthData = analyze_token_lengths(runner.dataset_info, dataset, tokenizer)
 
-            logger.report_message(f"Sequence lengths for {dataset_info.huggingface_name}")
+            logger.report_message("Sequence lengths:")
             logger.report_table_message(result._asdict())
-            for seq_len in dataset_info.potential_sequence_lengths:
+            for seq_len in runner.dataset_info.potential_sequence_lengths:
                 self.produce_coverage_report_from_target(dataset, seq_len, tokenizer, logger)
         except Exception as e:
             logger.report_exception("Error Analyzing Dataset", e)
