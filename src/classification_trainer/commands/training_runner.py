@@ -8,7 +8,13 @@ from trl.trainer.sft_trainer import SFTTrainer
 
 import classification_trainer.helpers.publishing_helper as publishing_helper
 from classification_trainer.configuration import DatasetInfo, TrainingInfo
-from classification_trainer.helpers.dataset_helper import DatasetSplits, load_dataset_from_hf, prepare_split_data
+from classification_trainer.helpers.dataset_helper import (
+    DatasetSplits,
+    load_dataset_from_hf,
+    make_stress_split,
+    prep_dataset,
+    prepare_split_data,
+)
 from classification_trainer.helpers.evaluation_helper import (
     ClassificationCounts,
     MetricProtocol,
@@ -42,6 +48,45 @@ class TrainingRunner:
         self._data_splits, self.dataset_info = prepare_split_data(
             self.training_info, self.dataset_info, datasets, tokenizer, pretokenize=self.pretokenize
         )
+
+    def prepare_stress_data(self, maximum_row_count: int, logger: LoggingProtocol) -> None:
+        datasets: DatasetDict = load_dataset_from_hf(self.dataset_info)
+        tokenizer: PreTrainedTokenizerBase = load_tokenizer_from_hf(self.training_info.base_model_info)
+        training_dataset: Dataset = datasets[self.dataset_info.training_split_name]
+        training_dataset = self.prepare_single_stress_dataset(training_dataset, maximum_row_count, tokenizer, logger)
+        evaluation_dataset: Dataset = training_dataset
+        if self.dataset_info.validation_split_name is not None:
+            evaluation_dataset = self.prepare_single_stress_dataset(
+                datasets[self.dataset_info.validate_split_name], maximum_row_count, tokenizer, logger
+            )
+        test_dataset: Dataset = training_dataset
+        if self.dataset_info.validation_split_name is not None:
+            test_dataset = self.prepare_single_stress_dataset(
+                datasets[self.dataset_info.test_split_name], maximum_row_count, tokenizer, logger
+            )
+        self._data_splits = DatasetSplits(
+            training_dataset=training_dataset, test_dataset=test_dataset, validation_dataset=evaluation_dataset
+        )
+
+    def prepare_single_stress_dataset(
+        self, dataset: Dataset, maximum_row_count: int, tokenizer: PreTrainedTokenizerBase, logger: LoggingProtocol
+    ) -> Dataset:
+        dataset = prep_dataset(
+            self.training_info,
+            self.training_info.base_model_info,
+            self.dataset_info,
+            dataset,
+            tokenizer,
+            self.pretokenize,
+        )
+        dataset = make_stress_split(self.dataset_info, dataset, maximum_row_count, tokenizer)
+        actual_count = len(dataset)
+        if actual_count < maximum_row_count:
+            logger.report_message(
+                f"Warning: requested {maximum_row_count} stress rows but dataset only has {actual_count} rows."
+            )
+
+        return dataset
 
     def load_model(self, logger: LoggingProtocol) -> None:
         self._model, self._tokenizer = load_base_model(self.training_info)
