@@ -92,12 +92,13 @@ class TrainingRunner:
     def load_model(self, logger: LoggingProtocol) -> None:
         self._model, self._tokenizer = load_base_model(self.training_info)
 
-    def train_model(self, logger: LoggingProtocol) -> int:
+    def train_model(self, logger: LoggingProtocol, force_disable_wandb: bool = False) -> int:
         if self._data_splits is None:
             raise ValueError("prepare_data must be called before train_model.  Datasets are None.")
         if self._model is None or self._tokenizer is None:
             raise ValueError("load_model must be called before train_model.  Model/Tokenizer are None.")
         CommonPaths.get().clear_cache_model_directories(self.training_info.model_name)
+        enable_wandb = self.training_info.wandb_config is not None and not force_disable_wandb
         logger.report_message("[blue]Begining Training...[/blue]")
         trainer: SFTTrainer = create_trainer(
             self.dataset_info,
@@ -105,7 +106,7 @@ class TrainingRunner:
             self._model,
             self._tokenizer,
             self._data_splits.training_dataset,
-            self.training_info.wandb_config is not None,
+            enable_wandb,
             self._data_splits.validation_dataset,
             output_dir=str(CommonPaths.get().get_model_checkpoint_directory(self.training_info.model_name)),
         )
@@ -209,20 +210,9 @@ class TrainingRunner:
         last_good, last_failed = 0, None
         while (candidate := TrainingRunner._next_batch_size_candidate(last_good, last_failed)) is not None:
             try:
-                self.training_info = self.training_info.model_copy(update={"per_device_batch_size": candidate})
-                trainer = create_trainer(
-                    self.dataset_info,
-                    self.training_info,
-                    self._model,
-                    self._tokenizer,
-                    self._data_splits.training_dataset,
-                    False,
-                    eval_dataset=self._data_splits.validation_dataset,
-                    output_dir=str(CommonPaths.get().get_model_checkpoint_directory(self.training_info.model_name)),
-                )
                 logger.report_message(f"Probing Batch Size: {candidate}")
-                run_training(trainer, self._model)
-                del trainer
+                self.training_info = self.training_info.model_copy(update={"per_device_batch_size": candidate})
+                self.train_model(logger, True)
                 flush_gpu_memory()
                 last_good = candidate
             except torch.cuda.OutOfMemoryError:
