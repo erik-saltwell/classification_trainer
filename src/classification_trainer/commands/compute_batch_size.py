@@ -20,13 +20,14 @@ class ComputeBatchSizeCommand(CommandProtocol):
     training_info: TrainingInfo
     dataset_info: DatasetInfo
     stress_set_rowcount: int
+    pretokenize: bool = True
 
     def execute(self, logger: LoggingProtocol) -> None:
         CommonPaths.get().clear_cache_model_directories(self.training_info.model_name)
         try:
             hf_logging.disable_progress_bar()
             hf_logging.set_verbosity_error()
-            runner: TrainingRunner = TrainingRunner(self.training_info, self.dataset_info, False)
+            runner: TrainingRunner = TrainingRunner(self.training_info, self.dataset_info, self.pretokenize)
             runner.prepare_stress_data(self.stress_set_rowcount, logger)
             runner.load_model(logger)
 
