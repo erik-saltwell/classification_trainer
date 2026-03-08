@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import unsloth  # isort: skip  # Must precede all transformers imports
 import os
+from datetime import datetime
 from importlib.metadata import PackageNotFoundError, metadata
 from importlib.metadata import version as dist_version
 from typing import Annotated
@@ -50,6 +51,10 @@ def create_logger() -> LoggingProtocol:
     return CompositeLogger([console_logger, file_logger])
 
 
+def seconds_since(start: datetime) -> float:
+    return (datetime.now() - start).total_seconds()
+
+
 @app.command("analyze-dataset")
 def analyze_sequence_length(
     training_info: Annotated[str, typer.Option("--training-info", help="Training info yaml name (no extension)")],
@@ -69,11 +74,13 @@ def analyze_sequence_length(
     tr_info = load_config_or_exit(load_training_info, training_info, "training info", console)
     ds_info = load_config_or_exit(load_dataset_info, dataset, "dataset info", console)
 
+    start = datetime.now()
     AnalyzeDatasetCommand(
         training_info=tr_info,
         dataset_info=ds_info,
         merge_all_splits=merge_all_splits,
     ).execute(logger=logger)
+    logger.report_message(f"Command completed in {seconds_since(start)} seconds.")
 
 
 @app.command("train")
@@ -87,10 +94,12 @@ def train(
     tr_info = load_config_or_exit(load_training_info, training_info, "training info", console)
     ds_info = load_config_or_exit(load_dataset_info, dataset, "dataset info", console)
 
+    start = datetime.now()
     TrainCommand(
         training_info=tr_info,
         dataset_info=ds_info,
     ).execute(logger=logger)
+    logger.report_message(f"Command completed in {seconds_since(start)} seconds.")
 
 
 @app.command("publish")
@@ -104,6 +113,7 @@ def publish(
     assert tr_info.publishing is not None
     pub_info = load_config_or_exit(load_publishing_info, tr_info.publishing, "publishing info", console)
 
+    start = datetime.now()
     try:
         PublishCommand(training_info=tr_info, publishing_info=pub_info).execute(logger=logger)
     except HfHubHTTPError as exc:
@@ -118,6 +128,7 @@ def publish(
     except RuntimeError as exc:
         console.print(f"[red]Error:[/red] {exc}")
         raise typer.Exit(code=1) from None
+    logger.report_message(f"Command completed in {seconds_since(start)} seconds.")
 
 
 @app.command("compute-batch-size")
@@ -136,11 +147,13 @@ def compute_batch_size(
     tr_info = load_config_or_exit(load_training_info, training_info, "training info", console)
     ds_info = load_config_or_exit(load_dataset_info, dataset, "dataset info", console)
 
+    start = datetime.now()
     ComputeBatchSizeCommand(
         training_info=tr_info,
         dataset_info=ds_info,
         stress_set_rowcount=stress_set_rowcount,
     ).execute(logger=logger)
+    logger.report_message(f"Command completed in {seconds_since(start)} seconds.")
 
 
 @app.command("sweep")
@@ -156,11 +169,13 @@ def sweep(
     tr_info = load_config_or_exit(load_training_info, training_info, "training info", console)
     ds_info = load_config_or_exit(load_dataset_info, dataset, "dataset info", console)
 
+    start = datetime.now()
     SweepCommand(
         training_info=tr_info,
         dataset_info=ds_info,
         count=count,
     ).execute(logger=logger)
+    logger.report_message(f"Command completed in {seconds_since(start)} seconds.")
 
 
 def _version_callback(value: bool) -> None:
