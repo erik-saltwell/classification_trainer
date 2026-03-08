@@ -51,6 +51,7 @@ class TrainingRunner:
             raise ValueError("prepare_data must be called before train_model.  Datasets are None.")
         if self._model is None or self._tokenizer is None:
             raise ValueError("load_model must be called before train_model.  Model/Tokenizer are None.")
+        CommonPaths.get().clear_cache_model_directories(self.training_info.model_name)
         logger.report_message("[blue]Begining Training...[/blue]")
         trainer: SFTTrainer = create_trainer(
             self.dataset_info,

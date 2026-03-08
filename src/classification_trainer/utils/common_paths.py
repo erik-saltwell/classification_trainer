@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -55,12 +56,20 @@ class CommonPaths:
         return self.OUTPUT_MODELS_DIR / Path("sweeps") / Path(model_name)
 
     def get_model_save_directory(self, model_name: str, save_format: str) -> Path:
-        return self.OUTPUT_MODELS_DIR / Path("saves") / Path(model_name) / Path(save_format)
+        return self.get_model_save_root_directory(model_name) / Path(save_format)
+
+    def get_model_save_root_directory(self, model_name: str) -> Path:
+        return self.OUTPUT_MODELS_DIR / Path("saves") / Path(model_name)
 
     def ensure_directory(self, dir: Path) -> None:
         if not dir.is_dir():
             raise ValueError("ensure_direcory called on non-directory")
         dir.mkdir(parents=True, exist_ok=True)
+
+    def clear_cache_model_directories(self, model_name: str) -> None:
+        shutil.rmtree(self.get_model_checkpoint_directory(model_name), ignore_errors=True)
+        shutil.rmtree(self.get_model_sweeps_directory(model_name), ignore_errors=True)
+        shutil.rmtree(self.get_model_save_root_directory(model_name), ignore_errors=True)
 
     @staticmethod
     def get() -> CommonPaths:

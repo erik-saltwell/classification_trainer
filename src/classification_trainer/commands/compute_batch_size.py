@@ -14,7 +14,7 @@ from classification_trainer.helpers.dataset_helper import (
 )
 from classification_trainer.helpers.tokenizer_helper import load_tokenizer_from_hf
 from classification_trainer.protocols import CommandProtocol, LoggingProtocol
-from classification_trainer.utils import flush_gpu_memory
+from classification_trainer.utils import CommonPaths, flush_gpu_memory
 
 
 @dataclass
@@ -24,6 +24,7 @@ class ComputeBatchSizeCommand(CommandProtocol):
     stress_set_rowcount: int
 
     def execute(self, logger: LoggingProtocol) -> None:
+        CommonPaths.get().clear_cache_model_directories(self.training_info.model_name)
         try:
             hf_logging.disable_progress_bar()
             hf_logging.set_verbosity_error()

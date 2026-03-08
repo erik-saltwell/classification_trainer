@@ -45,6 +45,7 @@ class SweepCommand(CommandProtocol):
     count: int = 10
 
     def execute(self, logger: LoggingProtocol) -> None:
+        CommonPaths.get().clear_cache_model_directories(self.training_info.model_name)
         try:
             # --- Startup validation ---
             if self.training_info.wandb_config is None:
@@ -86,7 +87,7 @@ class SweepCommand(CommandProtocol):
                 _trial_number += 1
 
                 try:
-                    run = wandb.init(
+                    _ = wandb.init(
                         project=wandb_config.project,
                         group=wandb_config.group,
                         job_type=wandb_config.job_type,

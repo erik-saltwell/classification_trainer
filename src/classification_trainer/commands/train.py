@@ -16,6 +16,7 @@ from classification_trainer.helpers.wandb_helper import initialize_wandb
 from classification_trainer.protocols import CommandProtocol, LoggingProtocol
 from classification_trainer.protocols.metric_reporting_protocol import MetricsReportingProtocol
 from classification_trainer.protocols.metric_result import MetricResult
+from classification_trainer.utils.common_paths import CommonPaths
 
 from .training_runner import TrainingRunner
 
@@ -59,6 +60,7 @@ class TrainCommand(CommandProtocol):
         return reporter
 
     def execute(self, logger: LoggingProtocol) -> None:
+        CommonPaths.get().clear_cache_model_directories(self.training_info.model_name)
         try:
             wandb_enabled = self.training_info.wandb_config is not None
             ctx = initialize_wandb(self.training_info) if wandb_enabled else nullcontext()
