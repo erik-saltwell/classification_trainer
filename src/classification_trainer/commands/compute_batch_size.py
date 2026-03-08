@@ -5,12 +5,13 @@ from datasets import Dataset, DatasetDict
 from transformers import PreTrainedTokenizerBase
 from transformers.utils import logging as hf_logging
 
+from classification_trainer.commands.training_runner import TrainingRunner
 from classification_trainer.configuration import DatasetInfo, TrainingInfo
 from classification_trainer.helpers.batch_size_helper import find_max_batch_size
 from classification_trainer.helpers.dataset_helper import (
     load_dataset_from_hf,
     make_stress_split,
-    prep_classification_dataset_for_training,
+    prep_dataset,
 )
 from classification_trainer.helpers.tokenizer_helper import load_tokenizer_from_hf
 from classification_trainer.protocols import CommandProtocol, LoggingProtocol
@@ -28,6 +29,9 @@ class ComputeBatchSizeCommand(CommandProtocol):
         try:
             hf_logging.disable_progress_bar()
             hf_logging.set_verbosity_error()
+            runner: TrainingRunner = TrainingRunner(self.training_info, self.dataset_info, False)
+            runner.prepare_data(logger)
+
             dataset_info = self.dataset_info
             datasets: DatasetDict = load_dataset_from_hf(dataset_info)
             tokenizer: PreTrainedTokenizerBase = load_tokenizer_from_hf(self.training_info.base_model_info)
@@ -65,12 +69,8 @@ class ComputeBatchSizeCommand(CommandProtocol):
     def prep_for_stress_test(
         self, dataset_info: DatasetInfo, dataset: Dataset, tokenizer: PreTrainedTokenizerBase, logger: LoggingProtocol
     ) -> Dataset:
-        return_dataset: Dataset = prep_classification_dataset_for_training(
-            dataset_info,
-            self.training_info,
-            dataset,
-            tokenizer,
-            self.training_info.base_model_info.chat_template_info,
+        return_dataset: Dataset = prep_dataset(
+            self.training_info, self.training_info.base_model_info, dataset_info, dataset, tokenizer, False
         )
         # A1 — pass return_dataset (post-prep) not the raw dataset
         return_dataset = make_stress_split(dataset_info, return_dataset, self.stress_set_rowcount, tokenizer)
