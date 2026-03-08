@@ -1,23 +1,20 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import TYPE_CHECKING
 
 import yaml
 from pydantic import BaseModel, Field
 from trl.trainer.sft_config import SFTConfig
 
-from classification_trainer.configuration.dataset_info import DatasetInfo
-from classification_trainer.utils import FragmentID, get_fragment
+from classification_trainer.utils.text_fragments import FragmentID, get_fragment
 
+from .base_model_info import BaseModelInfo
+from .dataset_info import DatasetInfo
+from .inference_info import InferenceInfo
+from .publishing_info import PublishingInfo
 from .sft_parameters import SFTParameters
 from .sweep_config import SweepConfig
 from .wandb_config import WandbConfig
-
-if TYPE_CHECKING:
-    from classification_trainer.configuration.base_model_info import BaseModelInfo
-    from classification_trainer.configuration.inference_info import InferenceInfo
-    from classification_trainer.configuration.publishing_info import PublishingInfo
 
 
 class TrainingLengthType(StrEnum):
@@ -34,7 +31,6 @@ class TrainingInfo(BaseModel):
     system_prompt_name: FragmentID
     # References to reusable config files (filename stem, no .yaml extension)
     base_model: str
-    dataset: str
     inference: str
     publishing: str | None = None
     model_card_description: str
@@ -64,12 +60,6 @@ class TrainingInfo(BaseModel):
         from classification_trainer.configuration.base_model_info import load_base_model_info
 
         return load_base_model_info(self.base_model)
-
-    @property
-    def dataset_info(self) -> DatasetInfo:
-        from classification_trainer.configuration.dataset_info import load_dataset_info
-
-        return load_dataset_info(self.dataset)
 
     @property
     def inference_info(self) -> InferenceInfo:

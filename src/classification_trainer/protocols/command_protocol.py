@@ -5,5 +5,5 @@ from typing import Protocol
 from .logging_protocol import LoggingProtocol
 
 
-class CommmandProtocol(Protocol):
+class CommandProtocol(Protocol):
     def execute(self, logger: LoggingProtocol) -> None: ...

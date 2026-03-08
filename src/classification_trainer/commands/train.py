@@ -1,44 +1,23 @@
 from contextlib import nullcontext
 from enum import IntEnum
 
+import typer
 from attr import dataclass
-from datasets import Dataset, DatasetDict
-from transformers import PreTrainedModel, PreTrainedTokenizerBase
-from trl.trainer.sft_trainer import SFTTrainer
+from datasets import Dataset
 
-from classification_trainer.configuration import BaseModelInfo, DatasetInfo, PublishingInfo, TrainingInfo
-from classification_trainer.configuration.chat_template_info import ChatTemplateInfo
-from classification_trainer.configuration.inference_info import InferenceInfo
-from classification_trainer.helpers import publishing_helper
-from classification_trainer.helpers.dataset_helper import (
-    add_eval_column,
-    load_dataset_from_hf,
-    prep_classification_dataset_for_training,
-    split_dataset,
-)
-from classification_trainer.helpers.evaluation_helper import (
-    ClassificationCounts,
-    MetricProtocol,
-    add_classification_result_column,
-    collect_classification_counts,
-    generate_metrics,
-    get_metrics_from_inference_info,
-)
-from classification_trainer.helpers.inference_helper import (
-    add_inferred_column,
-    setup_unsloth_inference,
-)
+from classification_trainer.configuration import DatasetInfo, TrainingInfo
+from classification_trainer.helpers.evaluation_helper import F1Metric
 from classification_trainer.helpers.reporting_helper import (
     CompositeMetricsReporter,
     LoggerMetricsReporter,
     WandBMetricsReporter,
 )
-from classification_trainer.helpers.tokenizer_helper import load_tokenizer_from_hf
-from classification_trainer.helpers.training_helper import create_trainer, load_base_model, run_training
 from classification_trainer.helpers.wandb_helper import initialize_wandb
-from classification_trainer.protocols import CommmandProtocol, LoggingProtocol
+from classification_trainer.protocols import CommandProtocol, LoggingProtocol
 from classification_trainer.protocols.metric_reporting_protocol import MetricsReportingProtocol
 from classification_trainer.protocols.metric_result import MetricResult
+
+from .training_runner import TrainingRunner
 
 
 @dataclass
@@ -53,83 +32,11 @@ class MetricsTrainingSteps(IntEnum):
 
 
 @dataclass
-class TrainCommand(CommmandProtocol):
-    base_model_info: BaseModelInfo
+class TrainCommand(CommandProtocol):
     training_info: TrainingInfo
-    inference_info: InferenceInfo
-    publishing_info: PublishingInfo | None = None
-    run_comparison_before_training: bool = True
-    seed: int = 3414
+    dataset_info: DatasetInfo
 
-    def extract_splits(self, dataset_info: DatasetInfo, datasets: DatasetDict) -> tuple[DatasetDict, DatasetInfo]:
-        training_dataset: Dataset = datasets[dataset_info.training_split_name]
-        if dataset_info.validation_split_name is None:
-            datasets, dataset_info = split_dataset(dataset_info, training_dataset, 0.1, 0.1, 3414)
-        return datasets, dataset_info
-
-    def prep_dataset(
-        self, dataset_info: DatasetInfo, dataset: Dataset, tokenizer: PreTrainedTokenizerBase
-    ) -> Dataset:
-        return_dataset = prep_classification_dataset_for_training(
-            dataset_info, self.training_info, dataset, tokenizer, self.base_model_info.chat_template_info
-        )
-        return_dataset = add_eval_column(dataset_info, self.training_info, return_dataset, tokenizer)
-
-        return return_dataset
-
-    def extract_prepared_datasets(
-        self, dataset_info: DatasetInfo, datasets: DatasetDict, tokenizer: PreTrainedTokenizerBase
-    ) -> DatasetSplits:
-        training_dataset = self.prep_dataset(dataset_info, datasets[dataset_info.training_split_name], tokenizer)
-        test_dataset = self.prep_dataset(dataset_info, datasets[dataset_info.test_split_name], tokenizer)
-        validation_dataset = self.prep_dataset(dataset_info, datasets[dataset_info.validation_split_name], tokenizer)
-        return DatasetSplits(
-            training_dataset=training_dataset, test_dataset=test_dataset, validation_dataset=validation_dataset
-        )
-
-    def test_model(
-        self,
-        dataset_info: DatasetInfo,
-        model: PreTrainedModel,
-        tokenizer: PreTrainedTokenizerBase,
-        dataset: Dataset,
-        metric_creators: list[MetricProtocol],
-        logger: LoggingProtocol,
-        reporter: MetricsReportingProtocol,
-        step: int,
-    ) -> list[MetricResult]:
-        model, tokenizer = setup_unsloth_inference(model, tokenizer, self.inference_info)
-        chat_template: ChatTemplateInfo = self.base_model_info.chat_template_info
-        dataset = add_inferred_column(
-            dataset, dataset_info, model, tokenizer, self.inference_info, chat_template, logger=logger
-        )
-        dataset = add_classification_result_column(dataset_info, dataset)
-        counts: ClassificationCounts = collect_classification_counts(dataset_info, dataset)
-        return_value = list(generate_metrics(counts, metric_creators))
-        reporter.report(return_value, step)
-        return return_value
-
-    def train_model(
-        self,
-        dataset_info: DatasetInfo,
-        model: PreTrainedModel,
-        tokenizer: PreTrainedTokenizerBase,
-        training_dataset: Dataset,
-        validation_dataset: Dataset,
-    ) -> int:
-        trainer: SFTTrainer = create_trainer(
-            dataset_info,
-            self.training_info,
-            self.base_model_info,
-            model,
-            tokenizer,
-            training_dataset,
-            self.training_info.wandb_config is not None,
-            validation_dataset,
-        )
-        return run_training(trainer, model)
-
-    def report_results(
+    def log_comparison_report(
         self, pre_run_results: list[MetricResult], post_run_results: list[MetricResult], logger: LoggingProtocol
     ) -> None:
         pre_dict = {r.metric_name: r.metric_result for r in pre_run_results}
@@ -144,76 +51,46 @@ class TrainCommand(CommmandProtocol):
             rows=[[name, str(pre_dict[name]), str(post_dict[name])] for name in pre_dict],
         )
 
+    def create_metrics_reporter(self, wandb_enabled: bool, logger: LoggingProtocol) -> MetricsReportingProtocol:
+        reporters: list[MetricsReportingProtocol] = [LoggerMetricsReporter(logger)]
+        if wandb_enabled:
+            reporters.append(WandBMetricsReporter())
+        reporter = CompositeMetricsReporter(reporters)
+        return reporter
+
     def execute(self, logger: LoggingProtocol) -> None:
-        wandb_enabled = self.training_info.wandb_config is not None
-        ctx = initialize_wandb(self.training_info) if wandb_enabled else nullcontext()
-        with ctx:
-            logger.report_message("[blue]Loading Tokenizer...[/blue]")
-            tokenizer: PreTrainedTokenizerBase = load_tokenizer_from_hf(self.base_model_info)
+        try:
+            wandb_enabled = self.training_info.wandb_config is not None
+            ctx = initialize_wandb(self.training_info) if wandb_enabled else nullcontext()
+            with ctx:
+                runner: TrainingRunner = TrainingRunner(self.training_info, self.dataset_info)
+                logger.report_message("[blue]Prepare Data[/blue]")
+                runner.prepare_data(logger)
 
-            logger.report_message("[blue]Loading Datasets...[/blue]")
-            dataset_info = self.training_info.dataset_info
-            datasets: DatasetDict = load_dataset_from_hf(dataset_info)
-            datasets, dataset_info = self.extract_splits(dataset_info, datasets)
-            data_splits = self.extract_prepared_datasets(dataset_info, datasets, tokenizer)
-            logger.report_message(
-                "[green]Split Counts:"
-                + f"{len(data_splits.training_dataset)} training, "
-                + f"{len(data_splits.validation_dataset)} validation, "
-                + f"{len(data_splits.test_dataset)} test[/green]"
-            )
+                logger.report_message("[blue]Loading base model...[/blue]")
+                runner.load_model(logger)
 
-            logger.report_message("[blue]Loading base model...[/blue]")
-            model, tokenizer = load_base_model(self.base_model_info, self.training_info)
+                reporter: MetricsReportingProtocol = self.create_metrics_reporter(wandb_enabled, logger)
 
-            metric_creators: list[MetricProtocol] = list(get_metrics_from_inference_info(self.inference_info))
+                logger.report_message("[blue]Pre Training Assessment...[/blue]")
+                pre_run_results: list[MetricResult] = runner.evaluate_model(logger, F1Metric())
+                reporter.report(pre_run_results, MetricsTrainingSteps.PRE_TRAINING)
 
-            reporters: list[MetricsReportingProtocol] = [LoggerMetricsReporter(logger)]
-            if wandb_enabled:
-                reporters.append(WandBMetricsReporter())
-            reporter = CompositeMetricsReporter(reporters)
+                logger.report_message("[blue]Training...[/blue]")
+                final_step = runner.train_model(logger)
 
-            logger.report_message("[blue]Pre Training Assessment...[/blue]")
-            pre_run_results: list[MetricResult] = self.test_model(
-                dataset_info,
-                model,
-                tokenizer,
-                data_splits.test_dataset,
-                metric_creators,
-                logger,
-                reporter,
-                step=MetricsTrainingSteps.PRE_TRAINING,
-            )
+                logger.report_message("[blue]Post-Run Assessment...[/blue]")
+                post_run_results: list[MetricResult] = runner.evaluate_model(logger, F1Metric())
+                reporter.report(post_run_results, final_step)
 
-            logger.report_message("[blue]Training...[/blue]")
-            final_step = self.train_model(
-                dataset_info, model, tokenizer, data_splits.training_dataset, data_splits.validation_dataset
-            )
+                logger.add_break()
+                self.log_comparison_report(pre_run_results, post_run_results, logger)
 
-            logger.report_message("[blue]Post-Run Assessment...[/blue]")
-            post_run_results: list[MetricResult] = self.test_model(
-                dataset_info,
-                model,
-                tokenizer,
-                data_splits.test_dataset,
-                metric_creators,
-                logger,
-                reporter,
-                step=final_step + 1,
-            )
-
-            logger.add_break()
-            self.report_results(pre_run_results, post_run_results, logger)
-
-            if self.publishing_info is not None:
-                publishing_helper.save_model(
-                    model,
-                    tokenizer,
-                    self.training_info,
-                    dataset_info,
-                    self.base_model_info,
-                    self.publishing_info,
-                    pre_run_results,
-                    post_run_results,
-                    logger,
-                )
+                if (
+                    self.training_info.publishing_info is not None
+                    and self.training_info.publishing_info.any_publish_enabled
+                ):
+                    runner.save_model(pre_run_results, post_run_results, logger)
+        except Exception as e:
+            logger.report_exception("Error Analyzing Dataset", e)
+            raise typer.Exit(code=1) from e

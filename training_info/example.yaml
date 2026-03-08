@@ -38,11 +38,6 @@ model_card_description: >
 # See base_model_info/example.yaml for the config format.
 base_model: "qwen2.5-0.5b-instruct"
 
-# Filename stem (no .yaml extension) of the dataset_info config to use.
-# Must match a file in dataset_info/. Example: "imdb", "reddit-rpg-questions"
-# See dataset_info/example.yaml for the config format.
-dataset: "imdb"
-
 # Filename stem of the inference_info config to use for evaluation.
 # Must match a file in inference_info/. Example: "simple-classification"
 # See inference_info/example.yaml for the config format.

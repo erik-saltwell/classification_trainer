@@ -17,11 +17,10 @@ from classification_trainer.commands.publish import PublishCommand
 from classification_trainer.commands.sweep import SweepCommand
 from classification_trainer.commands.train import TrainCommand
 from classification_trainer.configuration import (
-    load_base_model_info,
+    load_dataset_info,
     load_publishing_info,
     load_training_info,
 )
-from classification_trainer.configuration.inference_info import load_inference_info
 from classification_trainer.protocols.logging_protocol import CompositeLogger, LoggingProtocol
 from classification_trainer.utils.logging_config import configure_logging
 
@@ -54,13 +53,13 @@ def create_logger() -> LoggingProtocol:
 @app.command("analyze-dataset")
 def analyze_sequence_length(
     training_info: Annotated[str, typer.Option("--training-info", help="Training info yaml name (no extension)")],
+    dataset: Annotated[str, typer.Option("--dataset", help="Dataset info yaml name (no extension)")],
     merge_all_splits: Annotated[
         bool, typer.Option("--all-splits", help="Analyze all splits instead of just the training split")
     ] = False,
 ) -> None:
     """Analyze dataset token lengths and coverage.
 
-    The dataset is resolved from the 'dataset' field in the training config YAML.
     Sequence lengths are configured via the 'sequence_lengths' field in the dataset
     config YAML (defaults to [1024, 1536, 2048]).
     """
@@ -68,11 +67,11 @@ def analyze_sequence_length(
     logger: LoggingProtocol = create_logger()
 
     tr_info = load_config_or_exit(load_training_info, training_info, "training info", console)
-    bm_info = load_config_or_exit(load_base_model_info, tr_info.base_model, "base model info", console)
+    ds_info = load_config_or_exit(load_dataset_info, dataset, "dataset info", console)
 
     AnalyzeDatasetCommand(
-        base_model_info=bm_info,
         training_info=tr_info,
+        dataset_info=ds_info,
         merge_all_splits=merge_all_splits,
     ).execute(logger=logger)
 
@@ -80,31 +79,17 @@ def analyze_sequence_length(
 @app.command("train")
 def train(
     training_info: Annotated[str, typer.Option("--training-info", help="Training info yaml name (no extension)")],
-    run_comparison_before_training: Annotated[
-        bool,
-        typer.Option(
-            "--run-comparison-before-training", help="Evaluate on test set before and after training to compare results"
-        ),
-    ] = True,
+    dataset: Annotated[str, typer.Option("--dataset", help="Dataset info yaml name (no extension)")],
 ) -> None:
     console = Console()
     logger: LoggingProtocol = create_logger()
 
     tr_info = load_config_or_exit(load_training_info, training_info, "training info", console)
-    bm_info = load_config_or_exit(load_base_model_info, tr_info.base_model, "base model info", console)
-    inf_info = load_config_or_exit(load_inference_info, tr_info.inference, "inference info", console)
-    pub_info = (
-        load_config_or_exit(load_publishing_info, tr_info.publishing, "publishing info", console)
-        if tr_info.publishing is not None
-        else None
-    )
+    ds_info = load_config_or_exit(load_dataset_info, dataset, "dataset info", console)
 
     TrainCommand(
-        base_model_info=bm_info,
         training_info=tr_info,
-        run_comparison_before_training=run_comparison_before_training,
-        inference_info=inf_info,
-        publishing_info=pub_info,
+        dataset_info=ds_info,
     ).execute(logger=logger)
 
 
@@ -138,6 +123,7 @@ def publish(
 @app.command("compute-batch-size")
 def compute_batch_size(
     training_info: Annotated[str, typer.Option("--training-info", help="Training info yaml name (no extension)")],
+    dataset: Annotated[str, typer.Option("--dataset", help="Dataset info yaml name (no extension)")],
     stress_set_rowcount: Annotated[
         int, typer.Option("--stress-set-rowcount", help="Number of rows (longest sequences) to use for stress testing")
     ] = 100,
@@ -148,11 +134,11 @@ def compute_batch_size(
     logger: LoggingProtocol = create_logger()
 
     tr_info = load_config_or_exit(load_training_info, training_info, "training info", console)
-    bm_info = load_config_or_exit(load_base_model_info, tr_info.base_model, "base model info", console)
+    ds_info = load_config_or_exit(load_dataset_info, dataset, "dataset info", console)
 
     ComputeBatchSizeCommand(
-        base_model_info=bm_info,
         training_info=tr_info,
+        dataset_info=ds_info,
         stress_set_rowcount=stress_set_rowcount,
     ).execute(logger=logger)
 
@@ -160,6 +146,7 @@ def compute_batch_size(
 @app.command("sweep")
 def sweep(
     training_info: Annotated[str, typer.Option("--training-info", help="Training info yaml name (no extension)")],
+    dataset: Annotated[str, typer.Option("--dataset", help="Dataset info yaml name (no extension)")],
     count: Annotated[int, typer.Option("--count", help="Max number of sweep trials to run")] = 10,
 ) -> None:
     """Run a hyperparameter sweep using wandb."""
@@ -167,13 +154,11 @@ def sweep(
     logger: RichConsoleLogger = RichConsoleLogger(console)
 
     tr_info = load_config_or_exit(load_training_info, training_info, "training info", console)
-    bm_info = load_config_or_exit(load_base_model_info, tr_info.base_model, "base model info", console)
-    inf_info = load_config_or_exit(load_inference_info, tr_info.inference, "inference info", console)
+    ds_info = load_config_or_exit(load_dataset_info, dataset, "dataset info", console)
 
     SweepCommand(
-        base_model_info=bm_info,
         training_info=tr_info,
-        inference_info=inf_info,
+        dataset_info=ds_info,
         count=count,
     ).execute(logger=logger)
 

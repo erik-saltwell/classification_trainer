@@ -231,19 +231,22 @@ def save_model(
     tokenizer: PreTrainedTokenizerBase,
     training_info: TrainingInfo,
     dataset_info: DatasetInfo,
-    base_model_info: BaseModelInfo,
-    publishing_info: PublishingInfo,
     pre_metrics: list[MetricResult],
     post_metrics: list[MetricResult],
     logger: LoggingProtocol,
 ) -> None:
+    if training_info.publishing_info is None:
+        raise ValueError("No publishing Info found in training info")
+
+    publishing_info = training_info.publishing_info
+
     if not publishing_info.any_save_enabled:
         return
 
     logger.report_message("[blue]Saving model artifacts...[/blue]")
 
     def _save_format(slug: str) -> None:
-        save_dir = CommonPaths.get().output_models / training_info.model_name / slug
+        save_dir = CommonPaths.get().get_model_save_directory(training_info.model_name, slug)
         save_dir.mkdir(parents=True, exist_ok=True)
         try:
             logger.report_message(f"Saving {slug} \u2192 {save_dir}/")
@@ -263,7 +266,7 @@ def save_model(
                 slug,
                 training_info,
                 dataset_info,
-                base_model_info,
+                training_info.base_model_info,
                 publishing_info,
                 pre_metrics,
                 post_metrics,
@@ -309,7 +312,7 @@ def publish_model(
     api = HfApi()
 
     for slug in slugs:
-        save_dir = CommonPaths.get().output_models / training_info.model_name / slug
+        save_dir = CommonPaths.get().get_model_save_directory(training_info.model_name, slug)
         repo_id = f"{training_info.hugging_face_user_name}/{training_info.model_name}-{slug}"
 
         if not save_dir.exists():

@@ -1,4 +1,5 @@
 import random as _random
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
 
@@ -7,11 +8,19 @@ from datasets.utils.logging import set_verbosity_error
 from transformers import PreTrainedTokenizerBase
 
 from classification_trainer.configuration import ChatTemplateInfo, DatasetInfo, TrainingInfo
+from classification_trainer.configuration.base_model_info import BaseModelInfo
 from classification_trainer.protocols.logging_protocol import LoggingProtocol
 
 from .token_length_helper import compute_tokens
 
 set_verbosity_error()
+
+
+@dataclass
+class DatasetSplits:
+    training_dataset: Dataset
+    test_dataset: Dataset
+    validation_dataset: Dataset
 
 
 def take(dataset: Dataset, count: int) -> Dataset:
@@ -495,3 +504,54 @@ def remove_generated_columns(dataset_info: DatasetInfo, dataset: Dataset) -> Dat
         if column_name in return_dataset.column_names:
             return_dataset = return_dataset.remove_columns(column_name)
     return return_dataset
+
+
+def ensure_splits(dataset_info: DatasetInfo, datasets: DatasetDict) -> tuple[DatasetDict, DatasetInfo]:
+    training_dataset: Dataset = datasets[dataset_info.training_split_name]
+    if dataset_info.validation_split_name is None:
+        datasets, dataset_info = split_dataset(dataset_info, training_dataset, 0.1, 0.1, 3414)
+    return datasets, dataset_info
+
+
+def prep_dataset(
+    training_info: TrainingInfo,
+    base_model_info: BaseModelInfo,
+    dataset_info: DatasetInfo,
+    dataset: Dataset,
+    tokenizer: PreTrainedTokenizerBase,
+) -> Dataset:
+    return_dataset = prep_classification_dataset_for_training(
+        dataset_info, training_info, dataset, tokenizer, base_model_info.chat_template_info
+    )
+    return_dataset = add_eval_column(dataset_info, training_info, return_dataset, tokenizer)
+
+    return return_dataset
+
+
+def prepare_split_data(
+    training_info: TrainingInfo,
+    dataset_info: DatasetInfo,
+    datasets: DatasetDict,
+    tokenizer: PreTrainedTokenizerBase,
+) -> tuple[DatasetSplits, DatasetInfo]:
+    datasets, dataset_info = ensure_splits(dataset_info, datasets)
+    training_dataset = prep_dataset(
+        training_info,
+        training_info.base_model_info,
+        dataset_info,
+        datasets[dataset_info.training_split_name],
+        tokenizer,
+    )
+    test_dataset = prep_dataset(
+        training_info, training_info.base_model_info, dataset_info, datasets[dataset_info.test_split_name], tokenizer
+    )
+    validation_dataset = prep_dataset(
+        training_info,
+        training_info.base_model_info,
+        dataset_info,
+        datasets[dataset_info.validation_split_name],
+        tokenizer,
+    )
+    return DatasetSplits(
+        training_dataset=training_dataset, test_dataset=test_dataset, validation_dataset=validation_dataset
+    ), dataset_info

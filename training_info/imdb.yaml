@@ -2,7 +2,6 @@ model_name: "imdb-classifier"
 hugging_face_user_name: "eriksalt"
 system_prompt_name: "imdb_test_prompt.md"
 base_model: "qwen2.5-0.5b-instruct"
-dataset: "imdb"
 inference: "simple-classification"
 publishing: null
 model_card_description: >

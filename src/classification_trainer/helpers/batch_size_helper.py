@@ -25,7 +25,7 @@ def find_max_batch_size(
     eval_dataset: Dataset,
     logger: LoggingProtocol,
 ) -> int:
-    model, tokenizer = load_base_model(base_model_info, training_info)
+    model, tokenizer = load_base_model(training_info)
 
     base_test_info: TrainingInfo = training_info.model_copy(
         update={
@@ -45,7 +45,6 @@ def find_max_batch_size(
             trainer = create_trainer(
                 dataset_info,
                 test_info,
-                base_model_info,
                 model,
                 tokenizer,
                 train_dataset,

@@ -41,7 +41,6 @@ model_card_description: >
 # Must match a file in base_model_info/. Example: "qwen2.5-0.5b-instruct"
 # See base_model_info/example.yaml for the config format.
 base_model: "qwen2.5-7B-instruct-bnb-4bit"
-dataset: "reddit-rpg-questions"
 
 # Filename stem of the inference_info config to use for evaluation.
 # Must match a file in inference_info/. Example: "simple-classification"
