@@ -35,7 +35,6 @@ class MetricsTrainingSteps(IntEnum):
 class TrainCommand(CommandProtocol):
     training_info: TrainingInfo
     dataset_info: DatasetInfo
-    pretokenize: bool
 
     def log_comparison_report(
         self, pre_run_results: list[MetricResult], post_run_results: list[MetricResult], logger: LoggingProtocol
@@ -64,7 +63,7 @@ class TrainCommand(CommandProtocol):
             wandb_enabled = self.training_info.wandb_config is not None
             ctx = initialize_wandb(self.training_info) if wandb_enabled else nullcontext()
             with ctx:
-                runner: TrainingRunner = TrainingRunner(self.training_info, self.dataset_info, self.pretokenize)
+                runner: TrainingRunner = TrainingRunner(self.training_info, self.dataset_info)
                 logger.report_message("[blue]Prepare Data[/blue]")
                 runner.prepare_data(logger)
 

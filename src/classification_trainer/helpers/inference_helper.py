@@ -181,7 +181,6 @@ def add_inferred_column(
     eval_mask_col = dataset_info.tokenized_eval_attention_maske_column_name
     pre_tokenized = eval_ids_col in dataset.column_names
 
-    prompt_column_name: str | None = None
     if not pre_tokenized:
         prompt_column_name = dataset_info.evaluation_instructions_column_name
         if prompt_column_name not in dataset.column_names:
@@ -202,7 +201,6 @@ def add_inferred_column(
         return {output_column_name: preds}
 
     def _infer_batch_from_text(batch: dict) -> dict:
-        assert prompt_column_name is not None
         prompt_texts: list[str] = batch[prompt_column_name]
         preds: list[str] = generate_label_texts(
             model=model,
@@ -230,7 +228,6 @@ def add_inferred_column(
                 progress.advance(len(batch[eval_ids_col]))
             else:
                 result = _infer_batch_from_text(batch)
-                assert prompt_column_name is not None
                 progress.advance(len(batch[prompt_column_name]))
             return result
 

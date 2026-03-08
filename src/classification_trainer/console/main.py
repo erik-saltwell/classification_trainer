@@ -88,13 +88,6 @@ def analyze_sequence_length(
 def train(
     training_info: Annotated[str, typer.Option("--training-info", help="Training info yaml name (no extension)")],
     dataset: Annotated[str, typer.Option("--dataset", help="Dataset info yaml name (no extension)")],
-    pretokenize: Annotated[
-        bool,
-        typer.Option(
-            "--pretokenize",
-            help="If set the program pre-tokenizes training and evaluation data",
-        ),
-    ] = False,
 ) -> None:
     console = Console()
     logger: LoggingProtocol = create_logger()
@@ -107,7 +100,6 @@ def train(
     TrainCommand(
         training_info=tr_info,
         dataset_info=ds_info,
-        pretokenize=pretokenize,
     ).execute(logger=logger)
     logger.report_message(f"Command completed in {seconds_since(start)} seconds.")
 
@@ -145,13 +137,6 @@ def publish(
 def compute_batch_size(
     training_info: Annotated[str, typer.Option("--training-info", help="Training info yaml name (no extension)")],
     dataset: Annotated[str, typer.Option("--dataset", help="Dataset info yaml name (no extension)")],
-    pretokenize: Annotated[
-        bool,
-        typer.Option(
-            "--pretokenize",
-            help="If set the program pre-tokenizes training and evaluation data",
-        ),
-    ] = False,
     stress_set_rowcount: Annotated[
         int, typer.Option("--stress-set-rowcount", help="Number of rows (longest sequences) to use for stress testing")
     ] = 100,
@@ -167,7 +152,9 @@ def compute_batch_size(
 
     start = datetime.now()
     ComputeBatchSizeCommand(
-        training_info=tr_info, dataset_info=ds_info, stress_set_rowcount=stress_set_rowcount, pretokenize=pretokenize
+        training_info=tr_info,
+        dataset_info=ds_info,
+        stress_set_rowcount=stress_set_rowcount,
     ).execute(logger=logger)
     logger.report_message(f"Command completed in {seconds_since(start)} seconds.")
 
