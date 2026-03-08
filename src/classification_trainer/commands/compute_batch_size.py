@@ -56,9 +56,7 @@ class ComputeBatchSizeCommand(CommandProtocol):
 
             # P1 — Actionable final output
             if result > 0:
-                logger.report_message(
-                    f"[green]Recommended: set per_device_batch_size: {result} in your training YAML.[/green]"
-                )
+                logger.report_message(f"[green]Best per_device_batch_size: {result}.[/green]")
             else:
                 logger.report_message(
                     "[red]Could not find a working batch size. Check GPU memory and model size.[/red]"
