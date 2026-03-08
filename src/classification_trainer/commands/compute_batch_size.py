@@ -28,6 +28,7 @@ class ComputeBatchSizeCommand(CommandProtocol):
             hf_logging.set_verbosity_error()
             runner: TrainingRunner = TrainingRunner(self.training_info, self.dataset_info, False)
             runner.prepare_stress_data(self.stress_set_rowcount, logger)
+            runner.load_model(logger)
 
             # dataset_info = self.dataset_info
             # datasets: DatasetDict = load_dataset_from_hf(dataset_info)
@@ -39,7 +40,6 @@ class ComputeBatchSizeCommand(CommandProtocol):
             #     evaluation_dataset = datasets[dataset_info.validation_split_name]
             #     evaluation_dataset = self.prep_for_stress_test(dataset_info, evaluation_dataset, tokenizer, logger)
 
-            flush_gpu_memory()
             # result: int = find_max_batch_size(
             #     self.dataset_info,
             #     self.training_info.base_model_info,
@@ -48,7 +48,11 @@ class ComputeBatchSizeCommand(CommandProtocol):
             #     runner.validation_split,
             #     logger,
             # )
+
+            flush_gpu_memory()
             result: int = runner.find_max_batch_size(logger)
+            del runner
+            flush_gpu_memory()
 
             # P1 — Actionable final output
             if result > 0:

@@ -192,9 +192,8 @@ class TrainingRunner:
     ) -> int:
         if self._data_splits is None:
             raise ValueError("prepare_data must be called before computing batch size.  Datasets are None.")
-        # if self._model is None or self._tokenizer is None:
-        #     raise ValueError("load_model must be called before computing batch size.  Model/Tokenizer are None.")
-        model, tokenizer = load_base_model(self.training_info)
+        if self._model is None or self._tokenizer is None:
+            raise ValueError("load_model must be called before computing batch size.  Model/Tokenizer are None.")
 
         base_test_info: TrainingInfo = self.training_info.model_copy(
             update={
@@ -214,24 +213,21 @@ class TrainingRunner:
                 trainer = create_trainer(
                     self.dataset_info,
                     test_info,
-                    model,
-                    tokenizer,
+                    self._model,
+                    self._tokenizer,
                     self._data_splits.training_dataset,
                     False,
                     eval_dataset=self._data_splits.validation_dataset,
                     output_dir=str(CommonPaths.get().get_model_checkpoint_directory(self.training_info.model_name)),
                 )
                 logger.report_message(f"Probing Batch Size: {candidate}")
-                run_training(trainer, model)
+                run_training(trainer, self._model)
                 del trainer
                 flush_gpu_memory()
                 last_good = candidate
             except torch.cuda.OutOfMemoryError:
                 flush_gpu_memory()
                 last_failed = candidate
-
-        del model, tokenizer
-        flush_gpu_memory()
 
         if last_good == 0:
             logger.report_message("No batch size fits in GPU memory — even batch size 1 caused OOM.")
