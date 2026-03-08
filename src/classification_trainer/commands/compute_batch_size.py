@@ -7,7 +7,6 @@ from transformers.utils import logging as hf_logging
 
 from classification_trainer.commands.training_runner import TrainingRunner
 from classification_trainer.configuration import DatasetInfo, TrainingInfo
-from classification_trainer.helpers.batch_size_helper import find_max_batch_size
 from classification_trainer.helpers.dataset_helper import (
     make_stress_split,
     prep_dataset,
@@ -41,14 +40,15 @@ class ComputeBatchSizeCommand(CommandProtocol):
             #     evaluation_dataset = self.prep_for_stress_test(dataset_info, evaluation_dataset, tokenizer, logger)
 
             flush_gpu_memory()
-            result: int = find_max_batch_size(
-                self.dataset_info,
-                self.training_info.base_model_info,
-                self.training_info,
-                runner.training_split,
-                runner.validation_split,
-                logger,
-            )
+            # result: int = find_max_batch_size(
+            #     self.dataset_info,
+            #     self.training_info.base_model_info,
+            #     self.training_info,
+            #     runner.training_split,
+            #     runner.validation_split,
+            #     logger,
+            # )
+            result: int = runner.find_max_batch_size(logger)
 
             # P1 — Actionable final output
             if result > 0:

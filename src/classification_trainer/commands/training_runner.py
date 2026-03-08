@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+import torch
 from datasets import Dataset, DatasetDict
 from transformers import PreTrainedModel, PreTrainedTokenizerBase
 from trl.trainer.sft_trainer import SFTTrainer
 
 import classification_trainer.helpers.publishing_helper as publishing_helper
-from classification_trainer.configuration import DatasetInfo, TrainingInfo
+from classification_trainer.configuration import DatasetInfo, TrainingInfo, TrainingLengthType
 from classification_trainer.helpers.dataset_helper import (
     DatasetSplits,
     load_dataset_from_hf,
@@ -30,7 +31,7 @@ from classification_trainer.helpers.inference_helper import (
 from classification_trainer.helpers.tokenizer_helper import load_tokenizer_from_hf
 from classification_trainer.helpers.training_helper import create_trainer, load_base_model, run_training
 from classification_trainer.protocols import LoggingProtocol, MetricResult
-from classification_trainer.utils.common_paths import CommonPaths
+from classification_trainer.utils import CommonPaths, flush_gpu_memory
 
 
 @dataclass
@@ -174,3 +175,67 @@ class TrainingRunner:
         if self._data_splits is None:
             raise ValueError("Trying to access None data_splits.")
         return self._data_splits.test_dataset
+
+    @staticmethod
+    def _next_batch_size_candidate(last_good: int, last_failed: int | None) -> int | None:
+        if last_failed is None:
+            # Phase 1: exponential doubling
+            return 1 if last_good == 0 else last_good * 2
+        else:
+            # Phase 2: binary search between last_good and last_failed
+            mid = (last_good + last_failed) // 2
+            return None if mid == last_good else mid
+
+    def find_max_batch_size(
+        self,
+        logger: LoggingProtocol,
+    ) -> int:
+        if self._data_splits is None:
+            raise ValueError("prepare_data must be called before computing batch size.  Datasets are None.")
+        # if self._model is None or self._tokenizer is None:
+        #     raise ValueError("load_model must be called before computing batch size.  Model/Tokenizer are None.")
+        model, tokenizer = load_base_model(self.training_info)
+
+        base_test_info: TrainingInfo = self.training_info.model_copy(
+            update={
+                "training_length_type": TrainingLengthType.STEPS,
+                "gradient_accumulation_steps": 1,
+                "per_device_batch_size": 1,
+                "evaluation_enabled": True,
+                "evaluation_steps": 1,
+                "training_length": 3.0,
+            }
+        )
+
+        last_good, last_failed = 0, None
+        while (candidate := TrainingRunner._next_batch_size_candidate(last_good, last_failed)) is not None:
+            try:
+                test_info = base_test_info.model_copy(update={"per_device_batch_size": candidate})
+                trainer = create_trainer(
+                    self.dataset_info,
+                    test_info,
+                    model,
+                    tokenizer,
+                    self._data_splits.training_dataset,
+                    False,
+                    eval_dataset=self._data_splits.validation_dataset,
+                    output_dir=str(CommonPaths.get().get_model_checkpoint_directory(self.training_info.model_name)),
+                )
+                logger.report_message(f"Probing Batch Size: {candidate}")
+                run_training(trainer, model)
+                del trainer
+                flush_gpu_memory()
+                last_good = candidate
+            except torch.cuda.OutOfMemoryError:
+                flush_gpu_memory()
+                last_failed = candidate
+
+        del model, tokenizer
+        flush_gpu_memory()
+
+        if last_good == 0:
+            logger.report_message("No batch size fits in GPU memory — even batch size 1 caused OOM.")
+        else:
+            logger.report_message(f"Largest successful batch size: {last_good}")
+
+        return last_good
