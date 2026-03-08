@@ -5,6 +5,7 @@ from classification_trainer.configuration import BaseModelInfo, DatasetInfo, Tra
 from classification_trainer.helpers.training_helper import create_trainer, load_base_model, run_training
 from classification_trainer.protocols.logging_protocol import LoggingProtocol
 from classification_trainer.utils import flush_gpu_memory
+from classification_trainer.utils.common_paths import CommonPaths
 
 
 def _next_batch_size_candidate(last_good: int, last_failed: int | None) -> int | None:
@@ -50,6 +51,7 @@ def find_max_batch_size(
                 train_dataset,
                 False,
                 eval_dataset=eval_dataset,
+                output_dir=str(CommonPaths.get().get_model_checkpoint_directory(training_info.model_name)),
             )
             logger.report_message(f"Probing Batch Size: {candidate}")
             run_training(trainer, model)
