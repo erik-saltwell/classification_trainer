@@ -36,6 +36,7 @@ class MetricsTrainingSteps(IntEnum):
 class TrainCommand(CommandProtocol):
     training_info: TrainingInfo
     dataset_info: DatasetInfo
+    pretokenize: bool = True
 
     def log_comparison_report(
         self, pre_run_results: list[MetricResult], post_run_results: list[MetricResult], logger: LoggingProtocol
@@ -65,27 +66,20 @@ class TrainCommand(CommandProtocol):
             wandb_enabled = self.training_info.wandb_config is not None
             ctx = initialize_wandb(self.training_info) if wandb_enabled else nullcontext()
             with ctx:
-                runner: TrainingRunner = TrainingRunner(self.training_info, self.dataset_info)
-                logger.report_message("[blue]Prepare Data[/blue]")
-                runner.prepare_data(logger)
+                runner: TrainingRunner = TrainingRunner(self.training_info, self.dataset_info, self.pretokenize)
 
-                logger.report_message("[blue]Loading base model...[/blue]")
+                runner.prepare_data(logger)
                 runner.load_model(logger)
 
                 reporter: MetricsReportingProtocol = self.create_metrics_reporter(wandb_enabled, logger)
-
-                logger.report_message("[blue]Pre Training Assessment...[/blue]")
                 pre_run_results: list[MetricResult] = runner.evaluate_model(logger, F1Metric())
                 reporter.report(pre_run_results, MetricsTrainingSteps.PRE_TRAINING)
 
-                logger.report_message("[blue]Training...[/blue]")
                 final_step = runner.train_model(logger)
 
-                logger.report_message("[blue]Post-Run Assessment...[/blue]")
                 post_run_results: list[MetricResult] = runner.evaluate_model(logger, F1Metric())
                 reporter.report(post_run_results, final_step)
 
-                logger.add_break()
                 self.log_comparison_report(pre_run_results, post_run_results, logger)
 
                 if (

@@ -618,12 +618,12 @@ def ensure_splits(dataset_info: DatasetInfo, datasets: DatasetDict) -> tuple[Dat
 
 def prep_dataset(
     training_info: TrainingInfo,
-    base_model_info: BaseModelInfo,
     dataset_info: DatasetInfo,
     dataset: Dataset,
     tokenizer: PreTrainedTokenizerBase,
     pretokenize: bool = False,
 ) -> Dataset:
+    base_model_info: BaseModelInfo = training_info.base_model_info
     return_dataset = prep_classification_dataset_for_training(
         dataset_info, training_info, dataset, tokenizer, base_model_info.chat_template_info
     )
@@ -652,7 +652,6 @@ def prepare_split_data(
     datasets, dataset_info = ensure_splits(dataset_info, datasets)
     training_dataset = prep_dataset(
         training_info,
-        training_info.base_model_info,
         dataset_info,
         datasets[dataset_info.training_split_name],
         tokenizer,
@@ -660,7 +659,6 @@ def prepare_split_data(
     )
     test_dataset = prep_dataset(
         training_info,
-        training_info.base_model_info,
         dataset_info,
         datasets[dataset_info.test_split_name],
         tokenizer,
@@ -668,7 +666,6 @@ def prepare_split_data(
     )
     validation_dataset = prep_dataset(
         training_info,
-        training_info.base_model_info,
         dataset_info,
         datasets[dataset_info.validation_split_name],
         tokenizer,

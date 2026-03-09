@@ -43,7 +43,11 @@ class TrainingRunner:
     _model: PreTrainedModel | None = None
     _tokenizer: PreTrainedTokenizerBase | None = None
 
+    def report_blue_message(self, message: str, logger: LoggingProtocol) -> None:
+        logger.report_message("[blue]" + message + "[/blue]")
+
     def prepare_data(self, logger: LoggingProtocol) -> None:
+        self.report_blue_message("Preparing data...", logger)
         datasets: DatasetDict = load_dataset_from_hf(self.dataset_info)
         tokenizer: PreTrainedTokenizerBase = load_tokenizer_from_hf(self.training_info.base_model_info)
         self._data_splits, self.dataset_info = prepare_split_data(
@@ -51,6 +55,7 @@ class TrainingRunner:
         )
 
     def prepare_stress_data(self, maximum_row_count: int, logger: LoggingProtocol) -> None:
+        self.report_blue_message("Preparing data for stress testing...", logger)
         datasets: DatasetDict = load_dataset_from_hf(self.dataset_info)
         tokenizer: PreTrainedTokenizerBase = load_tokenizer_from_hf(self.training_info.base_model_info)
         training_dataset: Dataset = datasets[self.dataset_info.training_split_name]
@@ -74,7 +79,6 @@ class TrainingRunner:
     ) -> Dataset:
         dataset = prep_dataset(
             self.training_info,
-            self.training_info.base_model_info,
             self.dataset_info,
             dataset,
             tokenizer,
@@ -90,16 +94,17 @@ class TrainingRunner:
         return dataset
 
     def load_model(self, logger: LoggingProtocol) -> None:
+        self.report_blue_message("Loading base model...", logger)
         self._model, self._tokenizer = load_base_model(self.training_info)
 
     def train_model(self, logger: LoggingProtocol, force_disable_wandb: bool = False) -> int:
+        self.report_blue_message("Training model...", logger)
         if self._data_splits is None:
             raise ValueError("prepare_data must be called before train_model.  Datasets are None.")
         if self._model is None or self._tokenizer is None:
             raise ValueError("load_model must be called before train_model.  Model/Tokenizer are None.")
         CommonPaths.get().clear_cache_model_directories(self.training_info.model_name)
         enable_wandb = self.training_info.wandb_config is not None and not force_disable_wandb
-        logger.report_message("[blue]Begining Training...[/blue]")
         trainer: SFTTrainer = create_trainer(
             self.dataset_info,
             self.training_info,
@@ -120,7 +125,7 @@ class TrainingRunner:
         if self._model is None or self._tokenizer is None:
             raise ValueError("load_model must be called before evaluate_model.  Model/Tokenizer are None.")
 
-        logger.report_message("[blue]Evaluating Model...[/blue]")
+        self.report_blue_message("Evaluating model...", logger)
         model, tokenizer = setup_unsloth_inference(self._model, self._tokenizer, self.training_info.inference_info)
 
         dataset = add_inferred_column(
@@ -155,6 +160,7 @@ class TrainingRunner:
             raise ValueError("prepare_data must be called before evaluate_model.  Datasets are None.")
         if self._model is None or self._tokenizer is None:
             raise ValueError("load_model must be called before evaluate_model.  Model/Tokenizer are None.")
+        self.report_blue_message("Saving model...", logger)
         publishing_helper.save_model(
             self._model, self._tokenizer, self.training_info, self.dataset_info, pre_metrics, post_metrics, logger
         )
@@ -195,7 +201,7 @@ class TrainingRunner:
             raise ValueError("prepare_data must be called before computing batch size.  Datasets are None.")
         if self._model is None or self._tokenizer is None:
             raise ValueError("load_model must be called before computing batch size.  Model/Tokenizer are None.")
-
+        self.report_blue_message("Computing batch size...", logger)
         self.training_info = self.training_info.model_copy(
             update={
                 "training_length_type": TrainingLengthType.STEPS,
@@ -210,7 +216,7 @@ class TrainingRunner:
         last_good, last_failed = 0, None
         while (candidate := TrainingRunner._next_batch_size_candidate(last_good, last_failed)) is not None:
             try:
-                logger.report_message(f"Probing Batch Size: {candidate}")
+                logger.report_message(f"\tProbing Batch Size: {candidate}")
                 self.training_info = self.training_info.model_copy(update={"per_device_batch_size": candidate})
                 self.train_model(logger, True)
                 last_good = candidate

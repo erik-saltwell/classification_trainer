@@ -69,9 +69,7 @@ class ComputeBatchSizeCommand(CommandProtocol):
     def prep_for_stress_test(
         self, dataset_info: DatasetInfo, dataset: Dataset, tokenizer: PreTrainedTokenizerBase, logger: LoggingProtocol
     ) -> Dataset:
-        return_dataset: Dataset = prep_dataset(
-            self.training_info, self.training_info.base_model_info, dataset_info, dataset, tokenizer, False
-        )
+        return_dataset: Dataset = prep_dataset(self.training_info, dataset_info, dataset, tokenizer, False)
         # A1 — pass return_dataset (post-prep) not the raw dataset
         return_dataset = make_stress_split(dataset_info, return_dataset, self.stress_set_rowcount, tokenizer)
 
