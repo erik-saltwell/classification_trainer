@@ -87,6 +87,8 @@ class SweepCommand(CommandProtocol):
 
     def run_sweeps(self, sweep_id: str) -> None:
         assert self.training_info.sweep_config is not None
+        max_run_count: int = self.training_info.sweep_config.run_cap
+        current_run_count: int = 1
         self.logger.report_message(
             "[blue]Sweep optimising for: "
             f"{self.training_info.sweep_config.metric} ("
@@ -94,7 +96,13 @@ class SweepCommand(CommandProtocol):
         )
 
         def _run_trial() -> None:
+            nonlocal current_run_count
+            nonlocal max_run_count
+            self.logger.report_message(
+                f"[blue]***************** Sweep {current_run_count} of {max_run_count} *****************[/blue]"
+            )
             self.run_single_trial()
+            current_run_count = current_run_count + 1
 
         # --- Launch agent ---
         wandb.agent(sweep_id=sweep_id, function=_run_trial)
