@@ -193,6 +193,15 @@ class TrainingRunner:
             mid = (last_good + last_failed) // 2
             return None if mid == last_good else mid
 
+    def update_data_splits(self, data_splits: DatasetSplits, logger: LoggingProtocol) -> None:
+        self._data_splits = data_splits
+
+    @property
+    def data_splits(self) -> DatasetSplits:
+        if self._data_splits is None:
+            raise ValueError("prepare_data must be called before accessing data splits.  Datasets are None.")
+        return self._data_splits
+
     def find_max_batch_size(
         self,
         logger: LoggingProtocol,
