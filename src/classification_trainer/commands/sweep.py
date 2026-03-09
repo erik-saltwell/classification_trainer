@@ -8,7 +8,6 @@ import typer
 import wandb
 from classification_trainer.commands.training_runner import TrainingRunner
 from classification_trainer.configuration import DatasetInfo, TrainingInfo
-from classification_trainer.configuration.sweep_info import SweepInfo
 from classification_trainer.helpers.evaluation_helper import (
     _METRIC_REGISTRY,
     F1Metric,
@@ -18,6 +17,7 @@ from classification_trainer.helpers.reporting_helper import (
     LoggerMetricsReporter,
     WandBMetricsReporter,
 )
+from classification_trainer.helpers.sweep_helper import apply_trial_sft_parameters
 from classification_trainer.helpers.wandb_helper import WandBJobType, initialize_wandb
 from classification_trainer.protocols import CommandProtocol, LoggingProtocol
 from classification_trainer.protocols.logging_protocol import NullLogger
@@ -82,7 +82,7 @@ class SweepCommand(CommandProtocol):
         assert self.training_info.sweep_config is not None
         return self.training_info.sweep_config.to_wandb_sweep_config(self.training_info.sft_parameters)
 
-    def initialize_sweep(self, project: str, sweep_config: SweepInfo, sweep_parameters: dict[str, Any]) -> str:
+    def initialize_sweep(self, project: str, sweep_parameters: dict[str, Any]) -> str:
         return wandb.sweep(sweep=sweep_parameters, project=project)
 
     def run_sweeps(self, sweep_id: str) -> None:
@@ -97,7 +97,7 @@ class SweepCommand(CommandProtocol):
 
         def _run_trial() -> None:
             nonlocal current_run_count
-            nonlocal max_run_count
+            # nonlocal max_run_count
             self.logger.report_message(
                 f"[blue]***************** Sweep {current_run_count} of {max_run_count} *****************[/blue]"
             )
@@ -106,12 +106,11 @@ class SweepCommand(CommandProtocol):
 
         # --- Launch agent ---
         wandb.agent(sweep_id=sweep_id, function=_run_trial)
-        return
 
     def run_single_trial(self) -> None:
-        ctx = initialize_wandb(self.training_info, self.dataset_info, WandBJobType.SWEEP)
-        with ctx:
-            # self.training_info = apply_trial_sft_parameters(self.training_info, wandb.config))
+        with initialize_wandb(self.training_info, self.dataset_info, WandBJobType.SWEEP) as run:
+            sweep_run_config: dict[str, Any] = dict(run.config)
+            self.runner.training_info = apply_trial_sft_parameters(self.training_info, sweep_run_config)
             self.runner.load_model(self.logger)
             current_step: int = self.runner.train_model(self.logger)
             results: list[MetricResult] = self.runner.evaluate_model(self.logger, F1Metric())
@@ -130,7 +129,6 @@ class SweepCommand(CommandProtocol):
 
             sweep_id: str = self.initialize_sweep(
                 self.training_info.wandb_project_name,
-                self.training_info.sweep_config,
                 parameters,
             )
             self.run_sweeps(sweep_id)

@@ -73,10 +73,12 @@ def initialize_wandb(training_info: TrainingInfo, dataset_info: DatasetInfo, job
         group_name = "swp_" + training_info.sweep_config.sweep_name
 
     wandb.login()
-    return wandb.init(
+    return_value = wandb.init(
         project=training_info.wandb_project_name,
         group=group_name,
         job_type=str(job_type),
         tags=get_tags(training_info, dataset_info),
         config={"training_info": training_info.to_dict()},
     )
+    assert return_value is not None
+    return return_value
