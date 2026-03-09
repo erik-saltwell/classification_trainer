@@ -104,7 +104,7 @@ def make_stress_split(
     Useful for stress-testing memory and throughput with worst-case sequence lengths.
     """
     token_counts = [compute_tokens(text, tokenizer) for text in dataset[dataset_info.training_column_name]]
-    dataset = dataset.add_column("_token_count", token_counts)
+    dataset = dataset.add_column("_token_count", token_counts, new_fingerprint="stress_split_token_count")
     dataset = dataset.sort("_token_count", reverse=True)
     dataset = dataset.select(range(min(number_of_rows, len(dataset))))
     dataset = dataset.remove_columns("_token_count")
