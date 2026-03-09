@@ -12,10 +12,15 @@
 # Dataset source (REQUIRED)
 # ---------------------------------------------------------------------------
 
-# HuggingFace dataset repository name in the format "owner/dataset-name".
+# HuggingFace dataset repository name.
 # The dataset must be accessible via the huggingface_hub library.
-# Example: "stanfordnlp/imdb", "eriksalt/my-dataset"
-huggingface_name: "stanfordnlp/imdb"
+# Example: for "stanfordnlp/imdb" this would be "imdb"
+dataset_name: "imdb"
+
+# HuggingFace user who owns the dataset.
+# The user dataset must own the dataset named in datset_name in the huggingface_hub library.
+# Example: for "stanfordnlp/imdb" this would be "stanfordnlp"
+hugging_face_user_name: "stanfordnlp"
 
 
 # ---------------------------------------------------------------------------

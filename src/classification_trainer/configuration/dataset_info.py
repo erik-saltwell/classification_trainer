@@ -37,7 +37,9 @@ class DatasetInfo(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    huggingface_name: str
+    dataset_name: str
+    hugging_face_user_name: str
+    # huggingface_name: str
     content_column_name: str
     label_column_name: str
     new_column_prefix: str
@@ -68,6 +70,10 @@ class DatasetInfo(BaseModel):
         yield self.masked_tokenized_training_column_name
         yield self.tokenized_eval_column_name
         yield self.tokenized_eval_attention_maske_column_name
+
+    @property
+    def huggingface_name(self) -> str:
+        return self.hugging_face_user_name + "/" + self.dataset_name
 
     @property
     def masked_tokenized_training_column_name(sefl) -> str:

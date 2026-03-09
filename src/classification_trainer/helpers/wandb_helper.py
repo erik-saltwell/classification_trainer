@@ -51,9 +51,7 @@ def get_base_model_slug_from_training_info(training_info: TrainingInfo) -> str:
 
 
 def get_simple_dataset_name_from_dataset_info(dataset_info: DatasetInfo) -> str:
-    parts = dataset_info.huggingface_name.split("/", 1)
-    result = parts[1] if len(parts) > 1 else dataset_info.huggingface_name
-    return result
+    return dataset_info.dataset_name
 
 
 def get_tags(training_info: TrainingInfo, dataset_info: DatasetInfo) -> list[str]:
