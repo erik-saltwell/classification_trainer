@@ -108,12 +108,17 @@ def _validate_domain(param_name: str, spec: SweepParameterSpec) -> None:
                 raise ValueError(f"Sweep parameter '{param_name}': min/max must be {description}")
 
 
-class SweepConfig(BaseModel):
+class SweepInfo(BaseModel):
     """Sweep configuration block defining the hyperparameter search space."""
 
     model_config = ConfigDict(frozen=True)
 
     method: SweepMethod = SweepMethod.RANDOM
+    metric: str = "f1"
+    metric_goal: str = "maximize"
+    sweep_name: str
+    description: str
+    run_cap: int
     parameters: dict[str, SweepParameterSpec]
 
     @model_validator(mode="before")
@@ -131,7 +136,7 @@ class SweepConfig(BaseModel):
         return data
 
     @model_validator(mode="after")
-    def _validate_sweep_config(self) -> SweepConfig:
+    def _validate_sweep_config(self) -> SweepInfo:
         if not self.parameters:
             raise ValueError("Sweep block requires at least one parameter in 'parameters'")
 
@@ -155,14 +160,21 @@ class SweepConfig(BaseModel):
     def to_wandb_sweep_config(
         self,
         sft_parameters: SFTParameters,
-        metric_name: str,
-        metric_goal: str,
+        metric: str | None = None,
+        metric_goal: str | None = None,
     ) -> dict[str, Any]:
         """Build the full wandb sweep config dict.
 
         Listed parameters use their sweep spec; unlisted parameters
         use the fixed value from sft_parameters.
+
+        Args:
+            sft_parameters: Default SFT parameter values for unlisted sweep params.
+            metric: Metric name to optimize. Defaults to self.metric.
+            metric_goal: Optimization goal ("maximize"/"minimize"). Defaults to self.metric_goal.
         """
+        resolved_metric = metric if metric is not None else self.metric
+        resolved_goal = metric_goal if metric_goal is not None else self.metric_goal
         sft_dict = sft_parameters.to_dict()
         wandb_params: dict[str, Any] = {}
         for field_name in SFTParameters.model_fields:
@@ -172,7 +184,10 @@ class SweepConfig(BaseModel):
                 wandb_params[field_name] = {"value": sft_dict[field_name]}
 
         return {
+            "name": self.sweep_name,
+            "description": self.description,
+            "run_cap": self.run_cap,
             "method": str(self.method),
-            "metric": {"goal": metric_goal, "name": metric_name},
+            "metric": {"goal": resolved_goal, "name": resolved_metric},
             "parameters": wandb_params,
         }

@@ -3,12 +3,12 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from classification_trainer.configuration.sweep_config import (
-    SweepConfig,
+from classification_trainer.configuration.sft_parameters import SFTParameters
+from classification_trainer.configuration.sweep_info import (
+    SweepInfo,
     SweepMethod,
     SweepParameterSpec,
 )
-
 
 # ---------------------------------------------------------------------------
 # SweepParameterSpec — valid formats
@@ -72,16 +72,19 @@ def test_multiple_formats_rejected() -> None:
 
 
 # ---------------------------------------------------------------------------
-# SweepConfig — valid configs
+# SweepInfo — valid configs
 # ---------------------------------------------------------------------------
 
 
-def _make_config(**overrides: object) -> SweepConfig:
+def _make_config(**overrides: object) -> SweepInfo:
     defaults: dict[str, object] = {
+        "sweep_name": "test-sweep",
+        "description": "test sweep",
+        "run_cap": 10,
         "parameters": {"rank": {"values": [8, 16, 32]}},
     }
     defaults.update(overrides)
-    return SweepConfig.model_validate(defaults)
+    return SweepInfo.model_validate(defaults)
 
 
 def test_valid_sweep_config() -> None:
@@ -96,97 +99,189 @@ def test_method_defaults_to_random() -> None:
 
 
 # ---------------------------------------------------------------------------
-# SweepConfig — invalid configs
+# SweepInfo — invalid configs
 # ---------------------------------------------------------------------------
 
 
 def test_invalid_parameter_name_rejected() -> None:
     with pytest.raises(ValidationError, match="Unknown sweep parameter"):
-        SweepConfig.model_validate({"parameters": {"lerning_rate": {"values": [0.01]}}})
+        SweepInfo.model_validate(
+            {
+                "sweep_name": "test-sweep",
+                "description": "test sweep",
+                "run_cap": 10,
+                "parameters": {"lerning_rate": {"values": [0.01]}},
+            }
+        )
 
 
 def test_empty_parameters_dict_rejected() -> None:
     with pytest.raises(ValidationError, match="at least one parameter"):
-        SweepConfig.model_validate({"parameters": {}})
+        SweepInfo.model_validate(
+            {
+                "sweep_name": "test-sweep",
+                "description": "test sweep",
+                "run_cap": 10,
+                "parameters": {},
+            }
+        )
 
 
 def test_grid_with_continuous_range_rejected() -> None:
     with pytest.raises(ValidationError, match="Grid search requires"):
-        SweepConfig.model_validate({
-            "method": "grid",
-            "parameters": {"learning_rate": {"min": 1e-5, "max": 1e-3}},
-        })
+        SweepInfo.model_validate(
+            {
+                "sweep_name": "test-sweep",
+                "description": "test sweep",
+                "run_cap": 10,
+                "method": "grid",
+                "parameters": {"learning_rate": {"min": 1e-5, "max": 1e-3}},
+            }
+        )
 
 
 def test_grid_with_all_discrete_accepted() -> None:
-    config = SweepConfig.model_validate({
-        "method": "grid",
-        "parameters": {"rank": {"values": [8, 16]}, "optim": {"values": ["adamw_bnb_8bit"]}},
-    })
+    config = SweepInfo.model_validate(
+        {
+            "sweep_name": "test-sweep",
+            "description": "test sweep",
+            "run_cap": 10,
+            "method": "grid",
+            "parameters": {"rank": {"values": [8, 16]}, "optim": {"values": ["adamw_bnb_8bit"]}},
+        }
+    )
     assert config.method == SweepMethod.GRID
 
 
 # ---------------------------------------------------------------------------
-# SweepConfig — domain validation (T006)
+# SweepInfo — domain validation (T006)
 # ---------------------------------------------------------------------------
 
 
 def test_lora_dropout_out_of_range_rejected() -> None:
     with pytest.raises(ValidationError, match="lora_dropout.*invalid"):
-        SweepConfig.model_validate({"parameters": {"lora_dropout": {"values": [1.5]}}})
+        SweepInfo.model_validate(
+            {
+                "sweep_name": "test-sweep",
+                "description": "test sweep",
+                "run_cap": 10,
+                "parameters": {"lora_dropout": {"values": [1.5]}},
+            }
+        )
 
 
 def test_optim_invalid_value_rejected() -> None:
     with pytest.raises(ValidationError, match="optim.*invalid"):
-        SweepConfig.model_validate({"parameters": {"optim": {"values": ["not_real"]}}})
+        SweepInfo.model_validate(
+            {
+                "sweep_name": "test-sweep",
+                "description": "test sweep",
+                "run_cap": 10,
+                "parameters": {"optim": {"values": ["not_real"]}},
+            }
+        )
 
 
 def test_rank_negative_rejected() -> None:
     with pytest.raises(ValidationError, match="rank.*invalid"):
-        SweepConfig.model_validate({"parameters": {"rank": {"values": [-1]}}})
+        SweepInfo.model_validate(
+            {
+                "sweep_name": "test-sweep",
+                "description": "test sweep",
+                "run_cap": 10,
+                "parameters": {"rank": {"values": [-1]}},
+            }
+        )
 
 
 def test_rank_zero_rejected() -> None:
     with pytest.raises(ValidationError, match="rank.*invalid"):
-        SweepConfig.model_validate({"parameters": {"rank": {"values": [0]}}})
+        SweepInfo.model_validate(
+            {
+                "sweep_name": "test-sweep",
+                "description": "test sweep",
+                "run_cap": 10,
+                "parameters": {"rank": {"values": [0]}},
+            }
+        )
 
 
 def test_warmup_ratio_out_of_range_rejected() -> None:
     with pytest.raises(ValidationError, match="warmup_ratio.*invalid"):
-        SweepConfig.model_validate({"parameters": {"warmup_ratio": {"values": [1.5]}}})
+        SweepInfo.model_validate(
+            {
+                "sweep_name": "test-sweep",
+                "description": "test sweep",
+                "run_cap": 10,
+                "parameters": {"warmup_ratio": {"values": [1.5]}},
+            }
+        )
 
 
 def test_lr_scheduler_invalid_value_rejected() -> None:
     with pytest.raises(ValidationError, match="lr_scheduler_type.*invalid"):
-        SweepConfig.model_validate({"parameters": {"lr_scheduler_type": {"values": ["bogus"]}}})
+        SweepInfo.model_validate(
+            {
+                "sweep_name": "test-sweep",
+                "description": "test sweep",
+                "run_cap": 10,
+                "parameters": {"lr_scheduler_type": {"values": ["bogus"]}},
+            }
+        )
 
 
 def test_valid_domain_values_accepted() -> None:
-    config = SweepConfig.model_validate({
-        "parameters": {
-            "rank": {"values": [8, 16]},
-            "lora_dropout": {"values": [0.0, 0.1]},
-            "optim": {"values": ["adamw_bnb_8bit", "sgd"]},
-            "lr_scheduler_type": {"values": ["linear", "cosine"]},
-            "warmup_ratio": {"values": [0.05, 0.1]},
+    config = SweepInfo.model_validate(
+        {
+            "sweep_name": "test-sweep",
+            "description": "test sweep",
+            "run_cap": 10,
+            "parameters": {
+                "rank": {"values": [8, 16]},
+                "lora_dropout": {"values": [0.0, 0.1]},
+                "optim": {"values": ["adamw_bnb_8bit", "sgd"]},
+                "lr_scheduler_type": {"values": ["linear", "cosine"]},
+                "warmup_ratio": {"values": [0.05, 0.1]},
+            },
         }
-    })
+    )
     assert len(config.parameters) == 5
 
 
 def test_lora_dropout_range_out_of_domain_rejected() -> None:
     with pytest.raises(ValidationError, match="lora_dropout.*min/max"):
-        SweepConfig.model_validate({"parameters": {"lora_dropout": {"min": 0.0, "max": 1.5}}})
+        SweepInfo.model_validate(
+            {
+                "sweep_name": "test-sweep",
+                "description": "test sweep",
+                "run_cap": 10,
+                "parameters": {"lora_dropout": {"min": 0.0, "max": 1.5}},
+            }
+        )
 
 
 def test_lora_dropout_range_valid_accepted() -> None:
-    config = SweepConfig.model_validate({"parameters": {"lora_dropout": {"min": 0.0, "max": 0.5}}})
+    config = SweepInfo.model_validate(
+        {
+            "sweep_name": "test-sweep",
+            "description": "test sweep",
+            "run_cap": 10,
+            "parameters": {"lora_dropout": {"min": 0.0, "max": 0.5}},
+        }
+    )
     assert config.parameters["lora_dropout"].min == 0.0
 
 
 def test_fixed_value_domain_validated() -> None:
     with pytest.raises(ValidationError, match="optim.*invalid"):
-        SweepConfig.model_validate({"parameters": {"optim": {"value": "not_real"}}})
+        SweepInfo.model_validate(
+            {
+                "sweep_name": "test-sweep",
+                "description": "test sweep",
+                "run_cap": 10,
+                "parameters": {"optim": {"value": "not_real"}},
+            }
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -220,16 +315,19 @@ def test_wandb_fixed_scalar() -> None:
 # to_wandb_sweep_config (T012)
 # ---------------------------------------------------------------------------
 
-from classification_trainer.configuration.sft_parameters import SFTParameters
-
 
 def test_wandb_sweep_config_listed_params() -> None:
-    config = SweepConfig.model_validate({
-        "parameters": {
-            "rank": {"values": [8, 32]},
-            "learning_rate": {"min": 1e-5, "max": 1e-3},
+    config = SweepInfo.model_validate(
+        {
+            "sweep_name": "test-sweep",
+            "description": "test sweep",
+            "run_cap": 10,
+            "parameters": {
+                "rank": {"values": [8, 32]},
+                "learning_rate": {"min": 1e-5, "max": 1e-3},
+            },
         }
-    })
+    )
     sft = SFTParameters()
     result = config.to_wandb_sweep_config(sft, "f1", "maximize")
     assert result["parameters"]["rank"] == {"values": [8, 32]}
@@ -237,9 +335,14 @@ def test_wandb_sweep_config_listed_params() -> None:
 
 
 def test_wandb_sweep_config_unlisted_params_fixed() -> None:
-    config = SweepConfig.model_validate({
-        "parameters": {"rank": {"values": [8, 32]}},
-    })
+    config = SweepInfo.model_validate(
+        {
+            "sweep_name": "test-sweep",
+            "description": "test sweep",
+            "run_cap": 10,
+            "parameters": {"rank": {"values": [8, 32]}},
+        }
+    )
     sft = SFTParameters()
     result = config.to_wandb_sweep_config(sft, "f1", "maximize")
     # unlisted param uses sft_parameters default
@@ -248,10 +351,15 @@ def test_wandb_sweep_config_unlisted_params_fixed() -> None:
 
 
 def test_wandb_sweep_config_method_and_metric() -> None:
-    config = SweepConfig.model_validate({
-        "method": "bayes",
-        "parameters": {"rank": {"values": [8, 16]}},
-    })
+    config = SweepInfo.model_validate(
+        {
+            "sweep_name": "test-sweep",
+            "description": "test sweep",
+            "run_cap": 10,
+            "method": "bayes",
+            "parameters": {"rank": {"values": [8, 16]}},
+        }
+    )
     sft = SFTParameters()
     result = config.to_wandb_sweep_config(sft, "accuracy", "maximize")
     assert result["method"] == "bayes"
@@ -259,9 +367,14 @@ def test_wandb_sweep_config_method_and_metric() -> None:
 
 
 def test_wandb_sweep_config_all_sft_fields_present() -> None:
-    config = SweepConfig.model_validate({
-        "parameters": {"rank": {"values": [8]}},
-    })
+    config = SweepInfo.model_validate(
+        {
+            "sweep_name": "test-sweep",
+            "description": "test sweep",
+            "run_cap": 10,
+            "parameters": {"rank": {"values": [8]}},
+        }
+    )
     sft = SFTParameters()
     result = config.to_wandb_sweep_config(sft, "f1", "maximize")
     for field_name in SFTParameters.model_fields:
@@ -274,23 +387,51 @@ def test_wandb_sweep_config_all_sft_fields_present() -> None:
 
 
 def test_bare_scalar_integer() -> None:
-    config = SweepConfig.model_validate({"parameters": {"rank": 32}})
+    config = SweepInfo.model_validate(
+        {
+            "sweep_name": "test-sweep",
+            "description": "test sweep",
+            "run_cap": 10,
+            "parameters": {"rank": 32},
+        }
+    )
     assert config.parameters["rank"].value == 32
     assert config.parameters["rank"].values is None
 
 
 def test_bare_scalar_string() -> None:
-    config = SweepConfig.model_validate({"parameters": {"optim": "adamw_bnb_8bit"}})
+    config = SweepInfo.model_validate(
+        {
+            "sweep_name": "test-sweep",
+            "description": "test sweep",
+            "run_cap": 10,
+            "parameters": {"optim": "adamw_bnb_8bit"},
+        }
+    )
     assert config.parameters["optim"].value == "adamw_bnb_8bit"
 
 
 def test_bare_scalar_float() -> None:
-    config = SweepConfig.model_validate({"parameters": {"learning_rate": 0.0002}})
+    config = SweepInfo.model_validate(
+        {
+            "sweep_name": "test-sweep",
+            "description": "test sweep",
+            "run_cap": 10,
+            "parameters": {"learning_rate": 0.0002},
+        }
+    )
     assert config.parameters["learning_rate"].value == 0.0002
 
 
 def test_bare_scalar_boolean() -> None:
-    config = SweepConfig.model_validate({"parameters": {"use_projection_modules": False}})
+    config = SweepInfo.model_validate(
+        {
+            "sweep_name": "test-sweep",
+            "description": "test sweep",
+            "run_cap": 10,
+            "parameters": {"use_projection_modules": False},
+        }
+    )
     assert config.parameters["use_projection_modules"].value is False
 
 
@@ -300,37 +441,57 @@ def test_bare_scalar_boolean() -> None:
 
 
 def test_method_bayes_in_wandb_config() -> None:
-    config = SweepConfig.model_validate({
-        "method": "bayes",
-        "parameters": {"rank": {"values": [8, 16]}},
-    })
+    config = SweepInfo.model_validate(
+        {
+            "sweep_name": "test-sweep",
+            "description": "test sweep",
+            "run_cap": 10,
+            "method": "bayes",
+            "parameters": {"rank": {"values": [8, 16]}},
+        }
+    )
     result = config.to_wandb_sweep_config(SFTParameters(), "f1", "maximize")
     assert result["method"] == "bayes"
 
 
 def test_method_grid_in_wandb_config() -> None:
-    config = SweepConfig.model_validate({
-        "method": "grid",
-        "parameters": {"rank": {"values": [8, 16]}},
-    })
+    config = SweepInfo.model_validate(
+        {
+            "sweep_name": "test-sweep",
+            "description": "test sweep",
+            "run_cap": 10,
+            "method": "grid",
+            "parameters": {"rank": {"values": [8, 16]}},
+        }
+    )
     result = config.to_wandb_sweep_config(SFTParameters(), "f1", "maximize")
     assert result["method"] == "grid"
 
 
 def test_method_default_random_in_wandb_config() -> None:
-    config = SweepConfig.model_validate({
-        "parameters": {"rank": {"values": [8, 16]}},
-    })
+    config = SweepInfo.model_validate(
+        {
+            "sweep_name": "test-sweep",
+            "description": "test sweep",
+            "run_cap": 10,
+            "parameters": {"rank": {"values": [8, 16]}},
+        }
+    )
     result = config.to_wandb_sweep_config(SFTParameters(), "f1", "maximize")
     assert result["method"] == "random"
 
 
 def test_grid_with_min_max_raises_at_validation() -> None:
     with pytest.raises(ValidationError, match="Grid search"):
-        SweepConfig.model_validate({
-            "method": "grid",
-            "parameters": {"learning_rate": {"min": 1e-5, "max": 1e-3}},
-        })
+        SweepInfo.model_validate(
+            {
+                "sweep_name": "test-sweep",
+                "description": "test sweep",
+                "run_cap": 10,
+                "method": "grid",
+                "parameters": {"learning_rate": {"min": 1e-5, "max": 1e-3}},
+            }
+        )
 
 
 # ---------------------------------------------------------------------------

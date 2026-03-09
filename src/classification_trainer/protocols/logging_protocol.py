@@ -130,28 +130,25 @@ class NullLogger(LoggingProtocol):
     """
 
     def report_message(self, message: str) -> None:
-        """No-op: discard informational messages."""
-        pass
+        return
 
     def report_warning(self, message: str) -> None:
-        """No-op: discard warnings."""
-        pass
+        return
 
     def report_error(self, message: str) -> None:
-        """No-op: discard errors."""
-        pass
+        return
 
     def report_exception(self, context: str, exc: BaseException) -> None:
-        """No-op: discard exceptions."""
-        pass
+        return
 
     def report_table_message(self, row_data: dict[str, Any]) -> None:
-        """No-op: discard table data."""
-        pass
+        return
 
     def report_multicolumn_table(self, headers: list[str], rows: list[list[str]]) -> None:
-        """No-op: discard table data."""
-        pass
+        return
+
+    def add_break(self, break_count: int = 1) -> None:
+        return
 
     @contextmanager
     def status(self, message: str) -> Iterator[StatusHandle]:

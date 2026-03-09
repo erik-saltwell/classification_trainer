@@ -103,8 +103,9 @@ class TrainingRunner:
             raise ValueError("prepare_data must be called before train_model.  Datasets are None.")
         if self._model is None or self._tokenizer is None:
             raise ValueError("load_model must be called before train_model.  Model/Tokenizer are None.")
+
         CommonPaths.get().clear_cache_model_directories(self.training_info.model_name)
-        enable_wandb = self.training_info.wandb_config is not None and not force_disable_wandb
+        enable_wandb = self.training_info.has_wandb and not force_disable_wandb
         trainer: SFTTrainer = create_trainer(
             self.dataset_info,
             self.training_info,

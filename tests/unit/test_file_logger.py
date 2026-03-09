@@ -4,7 +4,6 @@ from pathlib import Path
 
 from classification_trainer.console.file_logging_protocol import FileLogger
 
-
 # ---------------------------------------------------------------------------
 # US1: Core logging methods
 # ---------------------------------------------------------------------------

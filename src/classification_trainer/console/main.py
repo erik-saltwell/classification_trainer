@@ -163,7 +163,6 @@ def compute_batch_size(
 def sweep(
     training_info: Annotated[str, typer.Option("--training-info", help="Training info yaml name (no extension)")],
     dataset: Annotated[str, typer.Option("--dataset", help="Dataset info yaml name (no extension)")],
-    count: Annotated[int, typer.Option("--count", help="Max number of sweep trials to run")] = 10,
 ) -> None:
     """Run a hyperparameter sweep using wandb."""
     console = Console()
@@ -177,7 +176,6 @@ def sweep(
     SweepCommand(
         training_info=tr_info,
         dataset_info=ds_info,
-        count=count,
     ).execute(logger=logger)
     logger.report_message(f"Command completed in {seconds_since(start)} seconds.")
 

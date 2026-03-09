@@ -86,18 +86,3 @@ metrics:
   - f1
   - total_seen
 
-
-# ---------------------------------------------------------------------------
-# Sweep settings (OPTIONAL — only used by the sweep command)
-# ---------------------------------------------------------------------------
-
-# The metric that the wandb sweep agent optimizes.
-# Must be one of the values listed in `metrics` above.
-# Allowed values: accuracy, precision, recall, f1, total_seen
-# Default: "f1"
-sweep_metric: "f1"
-
-# Whether the sweep agent should maximize or minimize the sweep_metric.
-# Allowed values: "maximize", "minimize"
-# Default: "maximize"
-sweep_metric_goal: "maximize"

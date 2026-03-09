@@ -4,9 +4,8 @@ from .dataset_info import DatasetInfo, load_dataset_info
 from .inference_info import InferenceInfo, load_inference_info
 from .publishing_info import PublishingInfo, SaveFormat, load_publishing_info
 from .sft_parameters import LRSchedulerType, OptimizerType, SFTParameters
-from .sweep_config import SweepConfig, SweepMethod, SweepParameterSpec
+from .sweep_info import SweepInfo, SweepMethod, SweepParameterSpec
 from .training_info import TrainingInfo, TrainingLengthType, load_training_info
-from .wandb_config import WandbConfig
 
 __all__ = [
     "BaseModelInfo",
@@ -22,12 +21,11 @@ __all__ = [
     "SaveFormat",
     "load_publishing_info",
     "SFTParameters",
-    "SweepConfig",
+    "SweepInfo",
     "SweepMethod",
     "SweepParameterSpec",
     "TrainingInfo",
     "TrainingLengthType",
     "InferenceInfo",
     "load_inference_info",
-    "WandbConfig",
 ]

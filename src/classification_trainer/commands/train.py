@@ -12,7 +12,7 @@ from classification_trainer.helpers.reporting_helper import (
     LoggerMetricsReporter,
     WandBMetricsReporter,
 )
-from classification_trainer.helpers.wandb_helper import initialize_wandb
+from classification_trainer.helpers.wandb_helper import WandBJobType, initialize_wandb
 from classification_trainer.protocols import CommandProtocol, LoggingProtocol
 from classification_trainer.protocols.metric_reporting_protocol import MetricsReportingProtocol
 from classification_trainer.protocols.metric_result import MetricResult
@@ -63,8 +63,12 @@ class TrainCommand(CommandProtocol):
     def execute(self, logger: LoggingProtocol) -> None:
         CommonPaths.get().clear_cache_model_directories(self.training_info.model_name)
         try:
-            wandb_enabled = self.training_info.wandb_config is not None
-            ctx = initialize_wandb(self.training_info) if wandb_enabled else nullcontext()
+            wandb_enabled = self.training_info.has_wandb
+            ctx = (
+                initialize_wandb(self.training_info, self.dataset_info, WandBJobType.TRAINING)
+                if wandb_enabled
+                else nullcontext()
+            )
             with ctx:
                 runner: TrainingRunner = TrainingRunner(self.training_info, self.dataset_info, self.pretokenize)
 
@@ -78,7 +82,7 @@ class TrainCommand(CommandProtocol):
                 final_step = runner.train_model(logger)
 
                 post_run_results: list[MetricResult] = runner.evaluate_model(logger, F1Metric())
-                reporter.report(post_run_results, final_step)
+                reporter.report(post_run_results, final_step + 1)
 
                 self.log_comparison_report(pre_run_results, post_run_results, logger)
 
@@ -88,5 +92,5 @@ class TrainCommand(CommandProtocol):
                 ):
                     runner.save_model(pre_run_results, post_run_results, logger)
         except Exception as e:
-            logger.report_exception("Error Analyzing Dataset", e)
+            logger.report_exception("Error Trainingt", e)
             raise typer.Exit(code=1) from e

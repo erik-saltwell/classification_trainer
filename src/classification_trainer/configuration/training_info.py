@@ -13,8 +13,7 @@ from .dataset_info import DatasetInfo
 from .inference_info import InferenceInfo, load_inference_info
 from .publishing_info import PublishingInfo, load_publishing_info
 from .sft_parameters import SFTParameters
-from .sweep_config import SweepConfig
-from .wandb_config import WandbConfig
+from .sweep_info import SweepInfo
 
 
 class TrainingLengthType(StrEnum):
@@ -52,8 +51,16 @@ class TrainingInfo(BaseModel):
     evaluation_steps: int = 50
     evaluation_enabled: bool = True
     greater_is_better: bool = False
-    wandb_config: WandbConfig | None = None
-    sweep: SweepConfig | None = None
+    wandb_project_name: str | None = None
+    sweep_config: SweepInfo | None = None
+
+    @property
+    def has_wandb(self) -> bool:
+        return bool(self.wandb_project_name)
+
+    @property
+    def has_sweep(self) -> bool:
+        return self.sweep_config is not None
 
     @property
     def base_model_info(self) -> BaseModelInfo:
