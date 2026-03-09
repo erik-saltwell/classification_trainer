@@ -181,8 +181,8 @@ def add_inferred_column(
     eval_mask_col = dataset_info.tokenized_eval_attention_maske_column_name
     pre_tokenized = eval_ids_col in dataset.column_names
 
+    prompt_column_name = dataset_info.evaluation_instructions_column_name
     if not pre_tokenized:
-        prompt_column_name = dataset_info.evaluation_instructions_column_name
         if prompt_column_name not in dataset.column_names:
             raise KeyError(f"Prompt column '{prompt_column_name}' not found in dataset columns: {dataset.column_names}")
 

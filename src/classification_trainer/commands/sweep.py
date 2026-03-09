@@ -7,6 +7,7 @@ from datasets import DatasetDict
 import wandb
 from classification_trainer.configuration import DatasetInfo, TrainingInfo
 from classification_trainer.configuration.chat_template_info import ChatTemplateInfo
+from classification_trainer.configuration.wandb_config import WandbConfig
 from classification_trainer.helpers.dataset_helper import (
     add_eval_column,
     load_dataset_from_hf,
@@ -44,37 +45,48 @@ class SweepCommand(CommandProtocol):
     dataset_info: DatasetInfo
     count: int = 10
 
+    def validate_parameters(self, logger: LoggingProtocol) -> None:
+        # --- Startup validation ---
+        if self.training_info.wandb_config is None:
+            logger.report_message(
+                "[red]Error:[/red] wandb_config must be set in training_info to use the sweep command."
+            )
+            raise typer.Exit(code=1)
+
+        sweep_metric = self.training_info.inference_info.sweep_metric
+        sweep_metric_goal = self.training_info.inference_info.sweep_metric_goal
+
+        if sweep_metric not in _METRIC_REGISTRY:
+            logger.report_message(
+                f"[red]Error:[/red] sweep_metric '{sweep_metric}' is not a valid metric. "
+                f"Valid options: {sorted(_METRIC_REGISTRY.keys())}"
+            )
+            raise typer.Exit(code=1)
+
+        if sweep_metric_goal not in ("maximize", "minimize"):
+            logger.report_message(
+                f"[red]Error:[/red] sweep_metric_goal '{sweep_metric_goal}' is invalid. "
+                "Must be 'maximize' or 'minimize'."
+            )
+            raise typer.Exit(code=1)
+
+    def configure_sweep(self, wandb_config: WandbConfig, logger: LoggingProtocol) -> int:
+        return 0
+
     def execute(self, logger: LoggingProtocol) -> None:
         CommonPaths.get().clear_cache_model_directories(self.training_info.model_name)
         try:
-            # --- Startup validation ---
-            if self.training_info.wandb_config is None:
-                logger.report_message(
-                    "[red]Error:[/red] wandb_config must be set in training_info to use the sweep command."
-                )
-                raise typer.Exit(code=1)
+            self.validate_parameters(logger)
+            assert self.training_info.wandb_config is not None
+            wandb_config: WandbConfig = self.training_info.wandb_config
 
-            sweep_metric = self.training_info.inference_info.sweep_metric
-            sweep_metric_goal = self.training_info.inference_info.sweep_metric_goal
-
-            if sweep_metric not in _METRIC_REGISTRY:
-                logger.report_message(
-                    f"[red]Error:[/red] sweep_metric '{sweep_metric}' is not a valid metric. "
-                    f"Valid options: {sorted(_METRIC_REGISTRY.keys())}"
-                )
-                raise typer.Exit(code=1)
-
-            if sweep_metric_goal not in ("maximize", "minimize"):
-                logger.report_message(
-                    f"[red]Error:[/red] sweep_metric_goal '{sweep_metric_goal}' is invalid. "
-                    "Must be 'maximize' or 'minimize'."
-                )
-                raise typer.Exit(code=1)
-
-            logger.report_message(f"[blue]Sweep optimising for: {sweep_metric} ({sweep_metric_goal})[/blue]")
+            logger.report_message(
+                "[blue]Sweep optimising for: "
+                f"{self.training_info.inference_info.sweep_metric} ("
+                f"{self.training_info.inference_info.sweep_metric_goal})[/blue]"
+            )
 
             # --- Create sweep ---
-            wandb_config = self.training_info.wandb_config
             sweep_config = build_sweep_config(self.training_info, self.training_info.inference_info)
             sweep_id = wandb.sweep(sweep=sweep_config, project=wandb_config.project)
             logger.report_message(f"[green]Sweep created. ID: {sweep_id}[/green]")

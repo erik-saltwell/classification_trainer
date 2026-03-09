@@ -57,9 +57,7 @@ class SweepParameterSpec(BaseModel):
             if self.min is None or self.max is None:
                 raise ValueError("Sweep parameter range requires both 'min' and 'max'")
             if self.min >= self.max:
-                raise ValueError(
-                    f"Sweep parameter 'min' ({self.min}) must be less than 'max' ({self.max})"
-                )
+                raise ValueError(f"Sweep parameter 'min' ({self.min}) must be less than 'max' ({self.max})")
 
         return self
 
@@ -99,21 +97,15 @@ def _validate_domain(param_name: str, spec: SweepParameterSpec) -> None:
     if spec.values is not None:
         for v in spec.values:
             if not check(v):
-                raise ValueError(
-                    f"Sweep parameter '{param_name}': value {v!r} is invalid — must be {description}"
-                )
+                raise ValueError(f"Sweep parameter '{param_name}': value {v!r} is invalid — must be {description}")
     if spec.value is not None:
         if not check(spec.value):
-            raise ValueError(
-                f"Sweep parameter '{param_name}': value {spec.value!r} is invalid — must be {description}"
-            )
+            raise ValueError(f"Sweep parameter '{param_name}': value {spec.value!r} is invalid — must be {description}")
     if spec.min is not None and spec.max is not None:
         # For range params, validate bounds are within domain where applicable
         if param_name in ("lora_dropout", "warmup_ratio"):
             if not (0.0 <= spec.min <= 1.0 and 0.0 <= spec.max <= 1.0):
-                raise ValueError(
-                    f"Sweep parameter '{param_name}': min/max must be {description}"
-                )
+                raise ValueError(f"Sweep parameter '{param_name}': min/max must be {description}")
 
 
 class SweepConfig(BaseModel):
@@ -131,7 +123,7 @@ class SweepConfig(BaseModel):
         if isinstance(data, dict) and "parameters" in data and isinstance(data["parameters"], dict):
             coerced: dict[str, Any] = {}
             for k, v in data["parameters"].items():
-                if isinstance(v, (int, float, str, bool)):
+                if isinstance(v, int | float | str):
                     coerced[k] = {"value": v}
                 else:
                     coerced[k] = v
@@ -146,17 +138,13 @@ class SweepConfig(BaseModel):
         valid_fields = set(SFTParameters.model_fields.keys())
         invalid_keys = set(self.parameters.keys()) - valid_fields
         if invalid_keys:
-            raise ValueError(
-                f"Unknown sweep parameter(s): {sorted(invalid_keys)}. "
-                f"Valid: {sorted(valid_fields)}"
-            )
+            raise ValueError(f"Unknown sweep parameter(s): {sorted(invalid_keys)}. Valid: {sorted(valid_fields)}")
 
         if self.method == SweepMethod.GRID:
             for name, spec in self.parameters.items():
                 if spec.min is not None or spec.max is not None:
                     raise ValueError(
-                        f"Grid search requires all parameters to use discrete values. "
-                        f"'{name}' uses min/max range"
+                        f"Grid search requires all parameters to use discrete values. '{name}' uses min/max range"
                     )
 
         for name, spec in self.parameters.items():

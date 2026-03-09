@@ -104,7 +104,7 @@ def make_stress_split(
     Useful for stress-testing memory and throughput with worst-case sequence lengths.
     """
     token_counts = [compute_tokens(text, tokenizer) for text in dataset[dataset_info.training_column_name]]
-    dataset = dataset.add_column("_token_count", token_counts)  # pyright: ignore
+    dataset = dataset.add_column("_token_count", token_counts)  # type: ignore[call-arg]
     dataset = dataset.sort("_token_count", reverse=True)
     dataset = dataset.select(range(min(number_of_rows, len(dataset))))
     dataset = dataset.remove_columns("_token_count")
@@ -473,14 +473,14 @@ def tokenize_training_column(
     ids_col = dataset_info.tokenized_training_column_name
     mask_col = dataset_info.tokenized_training_attention_maske_column_name
 
-    def _tokenize(batch: dict[str, list[Any]]) -> dict[str, list[Any]]:
+    def _tokenize(batch: dict[str, list[Any]]) -> dict[str, Any]:
         encodings = tokenizer(
             batch[col_name],
             truncation=True,
             max_length=max_seq_len,
             add_special_tokens=False,
         )
-        return {  # pyright:ignore
+        return {
             ids_col: encodings["input_ids"],
             mask_col: encodings["attention_mask"],
         }
