@@ -1,4 +1,13 @@
-huggingface_name: "stanfordnlp/imdb"
+# HuggingFace dataset repository name.
+# The dataset must be accessible via the huggingface_hub library.
+# Example: for "stanfordnlp/imdb" this would be "imdb"
+dataset_name: "imdb"
+
+# HuggingFace user who owns the dataset.
+# The user dataset must own the dataset named in datset_name in the huggingface_hub library.
+# Example: for "stanfordnlp/imdb" this would be "stanfordnlp"
+hugging_face_user_name: "stanfordnlp"
+
 content_column_name: "text"
 label_column_name: "label"
 new_column_prefix: "tmp_"

@@ -31,25 +31,6 @@ class ComputeBatchSizeCommand(CommandProtocol):
             runner.prepare_stress_data(self.stress_set_rowcount, logger)
             runner.load_model(logger)
 
-            # dataset_info = self.dataset_info
-            # datasets: DatasetDict = load_dataset_from_hf(dataset_info)
-            # tokenizer: PreTrainedTokenizerBase = load_tokenizer_from_hf(self.training_info.base_model_info)
-            # training_dataset: Dataset = datasets[dataset_info.training_split_name]
-            # training_dataset = self.prep_for_stress_test(dataset_info, training_dataset, tokenizer, logger)
-            # evaluation_dataset = training_dataset
-            # if dataset_info.validation_split_name is not None:
-            #     evaluation_dataset = datasets[dataset_info.validation_split_name]
-            #     evaluation_dataset = self.prep_for_stress_test(dataset_info, evaluation_dataset, tokenizer, logger)
-
-            # result: int = find_max_batch_size(
-            #     self.dataset_info,
-            #     self.training_info.base_model_info,
-            #     self.training_info,
-            #     runner.training_split,
-            #     runner.validation_split,
-            #     logger,
-            # )
-
             flush_gpu_memory()
             result: int = runner.find_max_batch_size(logger)
             del runner
