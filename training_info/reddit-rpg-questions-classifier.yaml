@@ -191,7 +191,7 @@ sft_parameters:
   # instead of 1/rank, which stabilizes training at higher ranks.
   # Automatically enabled when rank > 16 even if set to false.
   # Default: false
-  rslora: true
+  rslora: false
 
   # Use LoftQ initialization for LoRA adapter weights. LoftQ jointly optimizes
   # the quantization and LoRA init to minimize the approximation error of the
