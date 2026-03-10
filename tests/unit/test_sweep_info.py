@@ -3,7 +3,6 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from classification_trainer.configuration.sft_parameters import SFTParameters
 from classification_trainer.configuration.sweep_info import (
     SweepInfo,
     SweepMethod,
@@ -328,13 +327,12 @@ def test_wandb_sweep_config_listed_params() -> None:
             },
         }
     )
-    sft = SFTParameters()
-    result = config.to_wandb_sweep_config(sft, "f1", "maximize")
+    result = config.to_wandb_sweep_config("f1", "maximize")
     assert result["parameters"]["rank"] == {"values": [8, 32]}
     assert result["parameters"]["learning_rate"]["distribution"] == "log_uniform_values"
 
 
-def test_wandb_sweep_config_unlisted_params_fixed() -> None:
+def test_wandb_sweep_config_only_swept_params_present() -> None:
     config = SweepInfo.model_validate(
         {
             "sweep_name": "test-sweep",
@@ -343,11 +341,11 @@ def test_wandb_sweep_config_unlisted_params_fixed() -> None:
             "parameters": {"rank": {"values": [8, 32]}},
         }
     )
-    sft = SFTParameters()
-    result = config.to_wandb_sweep_config(sft, "f1", "maximize")
-    # unlisted param uses sft_parameters default
-    assert result["parameters"]["optim"] == {"value": "adamw_torch_8bit"}
-    assert result["parameters"]["learning_rate"] == {"value": 2e-4}
+    result = config.to_wandb_sweep_config("f1", "maximize")
+    # only the swept field is present — unlisted fields are not sent to wandb
+    assert list(result["parameters"].keys()) == ["rank"]
+    assert "optim" not in result["parameters"]
+    assert "learning_rate" not in result["parameters"]
 
 
 def test_wandb_sweep_config_method_and_metric() -> None:
@@ -360,25 +358,26 @@ def test_wandb_sweep_config_method_and_metric() -> None:
             "parameters": {"rank": {"values": [8, 16]}},
         }
     )
-    sft = SFTParameters()
-    result = config.to_wandb_sweep_config(sft, "accuracy", "maximize")
+    result = config.to_wandb_sweep_config("accuracy", "maximize")
     assert result["method"] == "bayes"
     assert result["metric"] == {"goal": "maximize", "name": "accuracy"}
 
 
-def test_wandb_sweep_config_all_sft_fields_present() -> None:
+def test_wandb_sweep_config_only_swept_fields_in_parameters() -> None:
     config = SweepInfo.model_validate(
         {
             "sweep_name": "test-sweep",
             "description": "test sweep",
             "run_cap": 10,
-            "parameters": {"rank": {"values": [8]}},
+            "parameters": {
+                "rank": {"values": [8]},
+                "learning_rate": {"min": 1e-5, "max": 1e-3},
+            },
         }
     )
-    sft = SFTParameters()
-    result = config.to_wandb_sweep_config(sft, "f1", "maximize")
-    for field_name in SFTParameters.model_fields:
-        assert field_name in result["parameters"], f"Missing field: {field_name}"
+    result = config.to_wandb_sweep_config("f1", "maximize")
+    # parameters block contains exactly the swept fields, nothing more
+    assert set(result["parameters"].keys()) == {"rank", "learning_rate"}
 
 
 # ---------------------------------------------------------------------------
@@ -450,7 +449,7 @@ def test_method_bayes_in_wandb_config() -> None:
             "parameters": {"rank": {"values": [8, 16]}},
         }
     )
-    result = config.to_wandb_sweep_config(SFTParameters(), "f1", "maximize")
+    result = config.to_wandb_sweep_config("f1", "maximize")
     assert result["method"] == "bayes"
 
 
@@ -464,7 +463,7 @@ def test_method_grid_in_wandb_config() -> None:
             "parameters": {"rank": {"values": [8, 16]}},
         }
     )
-    result = config.to_wandb_sweep_config(SFTParameters(), "f1", "maximize")
+    result = config.to_wandb_sweep_config("f1", "maximize")
     assert result["method"] == "grid"
 
 
@@ -477,7 +476,7 @@ def test_method_default_random_in_wandb_config() -> None:
             "parameters": {"rank": {"values": [8, 16]}},
         }
     )
-    result = config.to_wandb_sweep_config(SFTParameters(), "f1", "maximize")
+    result = config.to_wandb_sweep_config("f1", "maximize")
     assert result["method"] == "random"
 
 

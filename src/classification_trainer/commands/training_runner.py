@@ -116,6 +116,8 @@ class TrainingRunner:
             self._data_splits.validation_dataset,
             output_dir=str(CommonPaths.get().get_model_checkpoint_directory(self.training_info.model_name)),
         )
+        # trainer_lora_rank = trainer.model.peft_config["default"].r  # type:ignore
+        # logger.report_message(f"Training with Lora Rank: {trainer_lora_rank}")
         return run_training(trainer, self._model)
 
     def evaluate_model(
@@ -141,6 +143,8 @@ class TrainingRunner:
 
         dataset = add_classification_result_column(self.dataset_info, dataset)
         counts: ClassificationCounts = collect_classification_counts(self.dataset_info, dataset)
+
+        counts.log_confusion_matrix(logger)
 
         metric_creators = get_metrics_from_inference_info(self.training_info.inference_info)
         return_value = list(generate_metrics(counts, metric_creators))

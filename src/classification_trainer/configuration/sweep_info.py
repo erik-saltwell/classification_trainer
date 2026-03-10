@@ -159,30 +159,24 @@ class SweepInfo(BaseModel):
 
     def to_wandb_sweep_config(
         self,
-        sft_parameters: SFTParameters,
         metric: str | None = None,
         metric_goal: str | None = None,
     ) -> dict[str, Any]:
-        """Build the full wandb sweep config dict.
+        """Build the wandb sweep config dict for the swept parameters only.
 
-        Listed parameters use their sweep spec; unlisted parameters
-        use the fixed value from sft_parameters.
+        Unlisted SFTParameters fields are NOT sent to wandb — they default to
+        the base sft_parameters in training_info at trial time via
+        apply_trial_sft_parameters.
 
         Args:
-            sft_parameters: Default SFT parameter values for unlisted sweep params.
             metric: Metric name to optimize. Defaults to self.metric.
             metric_goal: Optimization goal ("maximize"/"minimize"). Defaults to self.metric_goal.
         """
         resolved_metric = metric if metric is not None else self.metric
         resolved_goal = metric_goal if metric_goal is not None else self.metric_goal
-        sft_dict = sft_parameters.to_dict()
-        wandb_params: dict[str, Any] = {}
-        for field_name in SFTParameters.model_fields:
-            if field_name in self.parameters:
-                wandb_params[field_name] = self.parameters[field_name].to_wandb_param_spec(field_name)
-            else:
-                wandb_params[field_name] = {"value": sft_dict[field_name]}
-
+        wandb_params: dict[str, Any] = {
+            field_name: spec.to_wandb_param_spec(field_name) for field_name, spec in self.parameters.items()
+        }
         return {
             "name": self.sweep_name,
             "description": self.description,

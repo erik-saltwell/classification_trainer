@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -80,7 +81,7 @@ class SweepCommand(CommandProtocol):
 
     def generate_sweep_parameters(self) -> dict[str, Any]:
         assert self.training_info.sweep_config is not None
-        return self.training_info.sweep_config.to_wandb_sweep_config(self.training_info.sft_parameters)
+        return self.training_info.sweep_config.to_wandb_sweep_config()
 
     def initialize_sweep(self, project: str, sweep_parameters: dict[str, Any]) -> str:
         return wandb.sweep(sweep=sweep_parameters, project=project)
@@ -126,6 +127,8 @@ class SweepCommand(CommandProtocol):
             self.prepare_metrics_reporter()
             self.prepare_data()
             parameters: dict[str, Any] = self.generate_sweep_parameters()
+            self.logger.report_message("[blue]Sweep config submitted to wandb:[/blue]")
+            self.logger.report_message(json.dumps(parameters, indent=2))
 
             sweep_id: str = self.initialize_sweep(
                 self.training_info.wandb_project_name,
