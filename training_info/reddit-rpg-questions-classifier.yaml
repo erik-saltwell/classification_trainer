@@ -234,7 +234,7 @@ sweep_config:
 #   # Search method. Allowed values: "random" (default), "bayes", "grid"
 #   # "bayes" converges faster for smooth landscapes; "grid" is exhaustive
 #   # but requires all parameters to use discrete values (no min/max ranges).
- method: random
+ method: grid
 #
 #   # Metric to optimise. Must match a metric name in inference_info.metrics.
 #   # Allowed values: accuracy, precision, recall, f1, total_seen. Default: "f1"
@@ -276,7 +276,8 @@ sweep_config:
 #   #
  parameters:
 #     rank: {values: [8, 16, 32]}
-  learning_rate: {min: 1e-5, max: 2e-2}
+#  learning_rate: {min: 1e-5, max: 2e-2}
+  learning_rate: {values: [3e-5, 1e-4, 2e-4, 3e-4,5e-4,7e-4,2e-3, 5e-3, 7e-3]}
 #     # These LoRA init parameters are also sweepable:
 #     rslora: {values: [true, false]}
 #     use_loftq: {values: [true, false]}
