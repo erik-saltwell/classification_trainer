@@ -117,19 +117,6 @@ packing: false
 # Default: 3412
 seed: 3412
 
-# Use LoftQ initialization for the LoRA adapter weights.
-# Only enable if you have specific reasons to use LoftQ.
-# Default: false
-use_loftq: false
-
-# LoftQ-specific settings. Ignored when use_loftq is false.
-loftq_bits: 4    # Quantization bits for LoftQ. Allowed: 4, 8
-loftq_iter: 1    # Number of LoftQ alternating iterations. Typical: 1–5
-
-# Use rank-stabilized LoRA (rsLoRA). Automatically enabled when rank > 16.
-# Default: false
-rslora: false
-
 
 # ---------------------------------------------------------------------------
 # Evaluation settings (OPTIONAL — defaults shown)
@@ -196,6 +183,29 @@ sft_parameters:
   # Allowed values: linear, cosine, cosine_with_restarts, polynomial, constant
   # Default: "linear"
   lr_scheduler_type: "linear"
+
+  # Use rank-stabilized LoRA (rsLoRA). Scales the LoRA update by 1/sqrt(rank)
+  # instead of 1/rank, which stabilizes training at higher ranks.
+  # Automatically enabled when rank > 16 even if set to false.
+  # Default: false
+  rslora: false
+
+  # Use LoftQ initialization for LoRA adapter weights. LoftQ jointly optimizes
+  # the quantization and LoRA init to minimize the approximation error of the
+  # quantized base model. Only useful when load_in_4bit is true.
+  # Default: false
+  use_loftq: false
+
+  # Number of quantization bits used by LoftQ. Only applies when use_loftq is true.
+  # Allowed values: 4, 8
+  # Default: 4
+  loftq_bits: 4
+
+  # Number of alternating optimization iterations for LoftQ.
+  # Higher values give a better initialization at the cost of startup time.
+  # Only applies when use_loftq is true. Typical range: 1–5.
+  # Default: 1
+  loftq_iter: 1
 
 
 # ---------------------------------------------------------------------------
@@ -264,3 +274,7 @@ wandb_project_name: "my-classifier-project"
 #   parameters:
 #     rank: {values: [8, 16, 32]}
 #     learning_rate: {min: 1e-5, max: 1e-3}
+#     # These LoRA init parameters are also sweepable:
+#     rslora: {values: [true, false]}
+#     use_loftq: {values: [true, false]}
+#     loftq_bits: {values: [4, 8]}

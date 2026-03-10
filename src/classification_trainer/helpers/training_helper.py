@@ -49,8 +49,11 @@ def load_base_model(training_info: TrainingInfo) -> tuple[PreTrainedModel, PreTr
     )
 
     loftq_config: dict[str, int] | None = None
-    if training_info.use_loftq:
-        loftq_config = {"loftq_bits": training_info.loftq_bits, "loftq_iter": training_info.loftq_iter}
+    if training_info.sft_parameters.use_loftq:
+        loftq_config = {
+            "loftq_bits": training_info.sft_parameters.loftq_bits,
+            "loftq_iter": training_info.sft_parameters.loftq_iter,
+        }
 
     model = FastLanguageModel.get_peft_model(
         model,

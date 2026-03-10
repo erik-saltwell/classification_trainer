@@ -27,6 +27,10 @@ def test_sft_parameters_defaults() -> None:
     assert p.optim == OptimizerType.ADAMW_TORCH_8BIT
     assert p.weight_decay == 0.01
     assert p.lr_scheduler_type == LRSchedulerType.LINEAR
+    assert p.use_loftq is False
+    assert p.loftq_bits == 4
+    assert p.loftq_iter == 1
+    assert p.rslora is False
 
 
 def test_sft_parameters_from_dict() -> None:
@@ -109,6 +113,10 @@ def test_to_dict_contains_all_fields() -> None:
         "optim",
         "weight_decay",
         "lr_scheduler_type",
+        "use_loftq",
+        "loftq_bits",
+        "loftq_iter",
+        "rslora",
     }
     assert d.keys() == expected_keys
 

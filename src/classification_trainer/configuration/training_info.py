@@ -43,11 +43,7 @@ class TrainingInfo(BaseModel):
     load_in_4bit: bool = True
     packing: bool = False
     seed: int = 3412
-    use_loftq: bool = False
-    loftq_bits: int = 4
-    loftq_iter: int = 1
     sft_parameters: SFTParameters = Field(default_factory=SFTParameters)
-    rslora: bool = False
     evaluation_steps: int = 50
     evaluation_enabled: bool = True
     greater_is_better: bool = False
@@ -87,7 +83,7 @@ class TrainingInfo(BaseModel):
 
     @property
     def use_rslora(self) -> bool:
-        return self.rslora or self.sft_parameters.rank > 16
+        return self.sft_parameters.rslora or self.sft_parameters.rank > 16
 
     @property
     def hugging_face_model_name(self) -> str:

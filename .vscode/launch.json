@@ -13,9 +13,9 @@
             "args": [
                 "sweep",
                 "--dataset",
-                "imdb",
+                "test-reddit-questions",
                 "--training-info",
-                "imdb-sweep",
+                "test-reddit-questions",
             ]
         },
         {

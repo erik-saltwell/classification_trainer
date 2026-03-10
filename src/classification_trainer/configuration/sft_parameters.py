@@ -65,7 +65,7 @@ class OptimizerType(StrEnum):
 
 
 class SFTParameters(BaseModel):
-    """LoRA and SFT trainer hyperparameters."""
+    """LoRA, LoftQ, and SFT trainer hyperparameters."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -78,6 +78,12 @@ class SFTParameters(BaseModel):
     optim: OptimizerType = OptimizerType.ADAMW_TORCH_8BIT
     weight_decay: float = 0.01
     lr_scheduler_type: LRSchedulerType = LRSchedulerType.LINEAR
+    # LoFTQ initialization
+    use_loftq: bool = False
+    loftq_bits: int = 4
+    loftq_iter: int = 1
+    # Rank-stabilized LoRA
+    rslora: bool = False
 
     @property
     def training_modules(self) -> list[str]:
