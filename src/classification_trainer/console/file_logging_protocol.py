@@ -36,21 +36,28 @@ class FileLogger(LoggingProtocol):
             width=120,
         )
 
+    def _flush(self) -> None:
+        self._file.flush()
+
     # ----- messages -----
 
     def report_message(self, message: str) -> None:
         self._console.print(message)
+        self._flush()
 
     def report_warning(self, message: str) -> None:
         self._console.print(f"[yellow]WARNING[/yellow] {message}")
+        self._flush()
 
     def report_error(self, message: str) -> None:
         self._console.print(f"[red]ERROR[/red] {message}")
+        self._flush()
 
     def report_exception(self, context: str, exc: BaseException) -> None:
         self._console.print(f"[red]EXCEPTION[/red] {context}")
         tb = Traceback.from_exception(type(exc), exc, exc.__traceback__)
         self._console.print(tb)
+        self._flush()
 
     def report_table_message(self, row_data: dict[str, Any]) -> None:
         table = Table(
@@ -63,6 +70,7 @@ class FileLogger(LoggingProtocol):
         for key, value in row_data.items():
             table.add_row(str(key), str(value))
         self._console.print(table)
+        self._flush()
 
     def report_multicolumn_table(self, headers: list[str], rows: list[list[str]]) -> None:
         table = Table(
@@ -75,10 +83,12 @@ class FileLogger(LoggingProtocol):
         for row in rows:
             table.add_row(*row)
         self._console.print(table)
+        self._flush()
 
     def add_break(self, break_count: int = 1) -> None:
         for _ in range(break_count):
             self._console.print("")
+        self._flush()
 
     # ----- status/progress (no-ops for file output) -----
 
