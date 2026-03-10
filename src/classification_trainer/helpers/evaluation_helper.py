@@ -8,7 +8,7 @@ from typing import Protocol, runtime_checkable
 from datasets import Dataset
 
 from classification_trainer.configuration import DatasetInfo, InferenceInfo
-from classification_trainer.protocols import MetricResult
+from classification_trainer.protocols import LoggingProtocol, MetricResult
 
 
 class ClassificationResult(IntEnum):
@@ -96,6 +96,16 @@ class ClassificationCounts:
     def total(self) -> int:
         """Total number of predictions."""
         return self.true_positives + self.true_negatives + self.false_positives + self.false_negatives
+
+    def log_confusion_matrix(self, logger: LoggingProtocol) -> None:
+        """Print the confusion matrix using the multi-column table logging in logger."""
+        logger.report_multicolumn_table(
+            headers=["", "Predicted Positive", "Predicted Negative"],
+            rows=[
+                ["Actual Positive", str(self.true_positives), str(self.false_negatives)],
+                ["Actual Negative", str(self.false_positives), str(self.true_negatives)],
+            ],
+        )
 
 
 @runtime_checkable

@@ -10,8 +10,6 @@ from pydantic import BaseModel, ConfigDict, field_validator
 
 from classification_trainer.utils.common_paths import CommonPaths
 
-from ._hf_validators import validate_hf_name
-
 _COLUMN_NAME_RE = re.compile(r"^[a-zA-Z0-9_]+$")
 _SPLIT_NAME_RE = re.compile(r"^[a-zA-Z0-9_\-]+$")
 
@@ -114,11 +112,6 @@ class DatasetInfo(BaseModel):
     @property
     def string_labels_column_name(self) -> str:
         return self.new_column_prefix + _STR_LABELS_COLUMN_NAME
-
-    @field_validator("huggingface_name")
-    @classmethod
-    def validate_huggingface_name(cls, v: str) -> str:
-        return validate_hf_name(v)
 
     @field_validator("content_column_name", "label_column_name", "new_column_prefix")
     @classmethod

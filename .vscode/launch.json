@@ -13,9 +13,9 @@
             "args": [
                 "sweep",
                 "--dataset",
-                "test-reddit-questions",
+                "imdb",
                 "--training-info",
-                "test-reddit-questions",
+                "imdb-sweep",
             ]
         },
         {
@@ -39,9 +39,9 @@
             "args": [
                 "train",
                 "--dataset",
-                "test-reddit-questions",
+                "imdb",
                 "--training-info",
-                "test-reddit-questions",
+                "imdb-sweep",
             ]
         },
         {

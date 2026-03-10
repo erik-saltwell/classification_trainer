@@ -249,7 +249,9 @@ wandb_project_name: "my-classifier-project"
 #   run_cap: 20
 #
 #   # Parameters to sweep. Each key must be a valid sft_parameters field name.
-#   # Three formats are supported:
+#   # Only list the parameters you want to vary — parameters not listed here
+#   # automatically use their values from the sft_parameters block above.
+#   # Two formats are supported:
 #   #
 #   # 1. Discrete list — sweep samples from these values:
 #   #    rank: {values: [8, 16, 32, 64]}
@@ -259,11 +261,6 @@ wandb_project_name: "my-classifier-project"
 #   #    weight_decay: {min: 0.0, max: 0.1}       # auto-selects uniform
 #   #    (learning_rate uses log-uniform; all others use uniform distribution)
 #   #
-#   # 3. Fixed value — parameter is held constant across all trials:
-#   #    optim: "adamw_bnb_8bit"
-#   #    rank: 32
-#   #
 #   parameters:
 #     rank: {values: [8, 16, 32]}
 #     learning_rate: {min: 1e-5, max: 1e-3}
-#     optim: "adamw_bnb_8bit"

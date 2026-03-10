@@ -8,7 +8,8 @@ from pydantic import ValidationError
 from classification_trainer.configuration.dataset_info import DatasetInfo
 
 _MINIMAL: dict[str, Any] = {
-    "huggingface_name": "owner/myds",
+    "dataset_name": "myds",
+    "hugging_face_user_name": "owner",
     "content_column_name": "text",
     "label_column_name": "label",
     "new_column_prefix": "ds_",

@@ -12,8 +12,14 @@ def apply_trial_sft_parameters(
     training_info: TrainingInfo,
     trial_config: Mapping[str, Any],
 ) -> TrainingInfo:
-    """Return a copy of training_info with sft_parameters replaced by the trial's values."""
-    sft_params = SFTParameters.from_dict(dict(trial_config))
+    """Return a copy of training_info with sft_parameters merged from the trial's values.
+
+    Base sft_parameters from training_info are used as defaults; wandb-provided
+    values in trial_config override only the swept fields.
+    """
+    base_dict = dict(training_info.sft_parameters.to_dict())
+    merged = {**base_dict, **dict(trial_config)}
+    sft_params = SFTParameters.from_dict(merged)
     return training_info.model_copy(update={"sft_parameters": sft_params})
 
 

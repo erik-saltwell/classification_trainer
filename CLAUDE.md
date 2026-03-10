@@ -16,6 +16,8 @@ Auto-generated from all feature plans. Last updated: 2026-03-05
 - Plain text file output (007-file-logger)
 - Python 3.11+ + Unsloth `FastLanguageModel`, TRL `SFTTrainer`, HuggingFace `datasets` + `transformers`, Pydantic v2 (009-pretokenize-runner)
 - HuggingFace Dataset (in-memory, Arrow-backed) (009-pretokenize-runner)
+- Python 3.11+ + Pydantic v2, wandb sweep/agent API, TRL SFTTrainer, Typer/Rich (010-sweep-params-observability)
+- N/A (config files only — YAML in `training_info/`) (010-sweep-params-observability)
 
 - Python 3.11+ + Unsloth (GGUF/LoRA/merged save), `huggingface_hub` (upload + ModelCard), (001-model-save-publish)
 
@@ -35,9 +37,9 @@ cd src [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECHNOLO
 Python 3.11+: Follow standard conventions
 
 ## Recent Changes
+- 010-sweep-params-observability: Added Python 3.11+ + Pydantic v2, wandb sweep/agent API, TRL SFTTrainer, Typer/Rich
 - 009-pretokenize-runner: Added Python 3.11+ + Unsloth `FastLanguageModel`, TRL `SFTTrainer`, HuggingFace `datasets` + `transformers`, Pydantic v2
 - 009-pretokenize-runner: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
-- 007-file-logger: Added Python 3.11+ + Pydantic v2 (not directly used), standard library only for this feature
 
 
 <!-- MANUAL ADDITIONS START -->

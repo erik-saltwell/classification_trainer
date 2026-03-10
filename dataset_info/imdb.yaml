@@ -12,9 +12,9 @@ content_column_name: "text"
 label_column_name: "label"
 new_column_prefix: "tmp_"
 training_split_name: "train"
-max_rowcount: 100
+max_rowcount: 1000
 positive_case: "pos"
 case_invariant_comparison: true
-search_length: -1
+search_length: 10
 search_from_end: false
 potential_sequence_lengths: [1024, 1536, 2048]
