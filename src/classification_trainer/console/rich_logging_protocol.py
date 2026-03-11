@@ -14,8 +14,13 @@ from classification_trainer.protocols import LoggingProtocol, ProgressTask, Stat
 
 
 class RichConsoleLogger(LoggingProtocol):
-    def __init__(self, console: Console | None = None) -> None:
+    def __init__(self, console: Console | None = None, verbose_training: bool = False) -> None:
         self._console = console or Console()
+        self._verbose_training = verbose_training
+
+    @property
+    def verbose_training(self) -> bool:
+        return self._verbose_training
 
     # ----- messages -----
 

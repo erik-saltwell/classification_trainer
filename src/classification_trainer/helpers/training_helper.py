@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from unsloth import FastLanguageModel  # isort: skip
+import json
 from contextlib import nullcontext
 from typing import Any, cast
 
@@ -11,7 +12,7 @@ from transformers import (
     TrainingArguments,
 )
 from transformers.integrations.integration_utils import WandbCallback
-from transformers.trainer_callback import TrainerControl, TrainerState
+from transformers.trainer_callback import TrainerCallback, TrainerControl, TrainerState
 from transformers.trainer_utils import TrainOutput
 from trl.trainer.sft_config import SFTConfig
 from trl.trainer.sft_trainer import SFTTrainer
@@ -20,6 +21,7 @@ from unsloth.chat_templates import train_on_responses_only
 from classification_trainer.configuration import DatasetInfo, TrainingInfo
 from classification_trainer.configuration.chat_template_info import ChatTemplateInfo
 from classification_trainer.helpers.wandb_helper import suppress_wandb_finish
+from classification_trainer.protocols.logging_protocol import LoggingProtocol, ProgressTask
 
 
 class _NoFinishWandbCallback(WandbCallback):
@@ -35,6 +37,47 @@ class _NoFinishWandbCallback(WandbCallback):
         **kwargs: Any,
     ) -> None:
         pass
+
+
+class _ProgressLoggingCallback(TrainerCallback):
+    """Bridges HuggingFace Trainer events to LoggingProtocol for progress reporting."""
+
+    _EXCLUDED_LOG_KEYS = frozenset(
+        {
+            "train_runtime",
+            "train_samples_per_second",
+            "train_steps_per_second",
+            "total_floss",
+            "eval_runtime",
+            "eval_samples_per_second",
+            "eval_steps_per_second",
+        }
+    )
+
+    def __init__(self, logger: LoggingProtocol, progress_task: ProgressTask) -> None:
+        self._logger = logger
+        self._progress = progress_task
+
+    def on_train_begin(
+        self, args: TrainingArguments, state: TrainerState, control: TrainerControl, **kwargs: Any
+    ) -> None:
+        self._progress.set_total(state.max_steps)
+
+    def on_step_end(self, args: TrainingArguments, state: TrainerState, control: TrainerControl, **kwargs: Any) -> None:
+        self._progress.set_completed(state.global_step)
+
+    def on_log(
+        self,
+        args: TrainingArguments,
+        state: TrainerState,
+        control: TrainerControl,
+        logs: dict[str, Any] | None = None,
+        **kwargs: Any,
+    ) -> None:
+        if logs and self._logger.verbose_training:
+            filtered = {k: v for k, v in logs.items() if k not in self._EXCLUDED_LOG_KEYS}
+            if filtered:
+                self._logger.report_message(json.dumps(filtered))
 
 
 def load_base_model(training_info: TrainingInfo) -> tuple[PreTrainedModel, PreTrainedTokenizerBase]:
@@ -106,13 +149,21 @@ def create_trainer(
     return trainer
 
 
-def run_training(trainer: SFTTrainer, model: PreTrainedModel) -> int:
+def run_training(
+    trainer: SFTTrainer,
+    model: PreTrainedModel,
+    logger: LoggingProtocol | None = None,
+) -> int:
     """Train the model and return the final global step."""
     import wandb
 
     model.train()
     FastLanguageModel.for_training(model)
     ctx = suppress_wandb_finish() if wandb.run is not None else nullcontext()
-    with ctx:
+    progress_ctx = logger.progress("Training") if logger is not None else nullcontext()
+
+    with ctx, progress_ctx as progress_task:
+        if progress_task is not None:
+            trainer.add_callback(_ProgressLoggingCallback(logger, progress_task))  # type: ignore[arg-type]
         training_output = cast(TrainOutput, trainer.train())
     return training_output.global_step  # pyright: ignore

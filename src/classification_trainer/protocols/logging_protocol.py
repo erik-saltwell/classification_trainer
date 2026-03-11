@@ -46,6 +46,11 @@ class ProgressTask(Protocol):
 class LoggingProtocol(Protocol):
     """Protocol defining the structured logging interface for the application."""
 
+    @property
+    def verbose_training(self) -> bool:
+        """Whether to log per-step training metrics during training."""
+        ...
+
     def report_message(self, message: str) -> None:
         """Log an informational message."""
         ...
@@ -129,6 +134,10 @@ class NullLogger(LoggingProtocol):
       - disabling all output
     """
 
+    @property
+    def verbose_training(self) -> bool:
+        return False
+
     def report_message(self, message: str) -> None:
         return
 
@@ -204,6 +213,10 @@ class CompositeLogger(LoggingProtocol):
     members: list[LoggingProtocol]
 
     """Protocol defining the structured logging interface for the application."""
+
+    @property
+    def verbose_training(self) -> bool:
+        return any(m.verbose_training for m in self.members)
 
     def report_message(self, message: str) -> None:
         for member in self.members:

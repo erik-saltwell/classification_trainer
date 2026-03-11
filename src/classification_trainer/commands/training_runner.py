@@ -31,6 +31,7 @@ from classification_trainer.helpers.inference_helper import (
 from classification_trainer.helpers.tokenizer_helper import load_tokenizer_from_hf
 from classification_trainer.helpers.training_helper import create_trainer, load_base_model, run_training
 from classification_trainer.protocols import LoggingProtocol, MetricResult
+from classification_trainer.protocols.logging_protocol import NullLogger
 from classification_trainer.utils import CommonPaths, flush_gpu_memory
 
 
@@ -42,9 +43,6 @@ class TrainingRunner:
     _data_splits: DatasetSplits | None = None
     _model: PreTrainedModel | None = None
     _tokenizer: PreTrainedTokenizerBase | None = None
-
-    def __post_init__(self) -> None:
-        self.flush()
 
     def report_blue_message(self, message: str, logger: LoggingProtocol) -> None:
         logger.report_message("[blue]" + message + "[/blue]")
@@ -121,7 +119,7 @@ class TrainingRunner:
         )
         # trainer_lora_rank = trainer.model.peft_config["default"].r  # type:ignore
         # logger.report_message(f"Training with Lora Rank: {trainer_lora_rank}")
-        return run_training(trainer, self._model)
+        return run_training(trainer, self._model, logger=logger)
 
     def evaluate_model(
         self, logger: LoggingProtocol, primary_logging_metric: MetricProtocol | None = None
@@ -221,9 +219,6 @@ class TrainingRunner:
             del tmp_tokenizer
         flush_gpu_memory()
 
-    def flush_model(self) -> None:
-        self.flush()
-
     def find_max_batch_size(
         self,
         logger: LoggingProtocol,
@@ -249,7 +244,7 @@ class TrainingRunner:
             try:
                 logger.report_message(f"\tProbing Batch Size: {candidate}")
                 self.training_info = self.training_info.model_copy(update={"per_device_batch_size": candidate})
-                self.train_model(logger, True)
+                self.train_model(NullLogger(), True)
                 last_good = candidate
             except torch.cuda.OutOfMemoryError:
                 last_failed = candidate

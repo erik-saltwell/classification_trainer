@@ -46,8 +46,8 @@ LOG_FILENAME: str = "classification_trainer.log"
 
 def create_logger() -> LoggingProtocol:
     console = Console()
-    console_logger: RichConsoleLogger = RichConsoleLogger(console)
-    file_logger: FileLogger = FileLogger(LOG_FILENAME)
+    console_logger: RichConsoleLogger = RichConsoleLogger(console, verbose_training=False)
+    file_logger: FileLogger = FileLogger(LOG_FILENAME, verbose_training=True)
     return CompositeLogger([console_logger, file_logger])
 
 
