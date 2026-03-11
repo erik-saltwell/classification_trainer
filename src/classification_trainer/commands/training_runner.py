@@ -43,6 +43,9 @@ class TrainingRunner:
     _model: PreTrainedModel | None = None
     _tokenizer: PreTrainedTokenizerBase | None = None
 
+    def __post_init__(self) -> None:
+        self.flush()
+
     def report_blue_message(self, message: str, logger: LoggingProtocol) -> None:
         logger.report_message("[blue]" + message + "[/blue]")
 
@@ -207,16 +210,19 @@ class TrainingRunner:
             raise ValueError("prepare_data must be called before accessing data splits.  Datasets are None.")
         return self._data_splits
 
-    def flush_model(self) -> None:
-        if self._model is None or self._tokenizer is None:
-            return
-        tmp_model = self._model
-        tmp_tokenizer = self._tokenizer
-        self._model = None
-        self._tokenizer = None
-        del tmp_model
-        del tmp_tokenizer
+    def flush(self) -> None:
+        if self._model is not None:
+            tmp_model = self._model
+            self._model = None
+            del tmp_model
+        if self._tokenizer is not None:
+            tmp_tokenizer = self._tokenizer
+            self._tokenizer = None
+            del tmp_tokenizer
         flush_gpu_memory()
+
+    def flush_model(self) -> None:
+        self.flush()
 
     def find_max_batch_size(
         self,

@@ -37,6 +37,7 @@ class SweepCommand(CommandProtocol):
 
     def __post_init__(self) -> None:
         self.runner = TrainingRunner(self.training_info, self.dataset_info)
+        self.runner.flush()
         self.reporter = CompositeMetricsReporter([])
 
     def validate_parameters(self) -> None:
@@ -116,7 +117,7 @@ class SweepCommand(CommandProtocol):
             current_step: int = self.runner.train_model(self.logger)
             results: list[MetricResult] = self.runner.evaluate_model(self.logger, F1Metric())
             self.reporter.report(results, current_step + 1)
-            self.runner.flush_model()
+            self.runner.flush()
 
     def execute(self, logger: LoggingProtocol) -> None:
         self.logger = logger
