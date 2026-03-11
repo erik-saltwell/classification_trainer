@@ -166,7 +166,7 @@ def sweep(
 ) -> None:
     """Run a hyperparameter sweep using wandb."""
     console = Console()
-    logger: RichConsoleLogger = RichConsoleLogger(console)
+    logger: LoggingProtocol = create_logger()
 
     tr_info = load_config_or_exit(load_training_info, training_info, "training info", console)
     ds_info = load_config_or_exit(load_dataset_info, dataset, "dataset info", console)
