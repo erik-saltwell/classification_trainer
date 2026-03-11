@@ -1,3 +1,4 @@
+import math
 import random as _random
 from dataclasses import dataclass
 from pathlib import Path
@@ -671,6 +672,18 @@ def prepare_split_data(
         tokenizer,
         pretokenize=pretokenize,
     )
+
+    # move over some positive cases from the eval dataset to test (for better testing), if specified in dataset_info
+    if dataset_info.positive_cases_to_move_from_eval_to_test > 0.0:
+        positive_eval_cases = validation_dataset.filter(
+            lambda row: row[dataset_info.string_labels_column_name] == dataset_info.positive_case
+        )
+        number_of_cases_to_take = int(
+            math.floor(len(positive_eval_cases) * dataset_info.positive_cases_to_move_from_eval_to_test)
+        )
+        positive_eval_cases = take(positive_eval_cases, number_of_cases_to_take)
+        test_dataset = union_datasets(test_dataset, positive_eval_cases)
+
     return DatasetSplits(
         training_dataset=training_dataset, test_dataset=test_dataset, validation_dataset=validation_dataset
     ), dataset_info

@@ -57,6 +57,10 @@ class DatasetInfo(BaseModel):
     # Sequence lengths to check coverage for in analyze-dataset.
     potential_sequence_lengths: list[int] = [1024, 1536, 2048]
 
+    # if you have a small dataset and an imbalance between positive and negative test cases.
+    # this variable will move some percent of your positive cases in your eval split into your test split
+    positive_cases_to_move_from_eval_to_test: float = 0.0
+
     def get_generated_column_names(self) -> Iterator[str]:
         yield self.classification_result_column_name
         yield self.prediction_column_name
@@ -132,6 +136,13 @@ class DatasetInfo(BaseModel):
     def validate_split_name(cls, v: str | None) -> str | None:
         if v is not None and not _SPLIT_NAME_RE.match(v):
             raise ValueError(f"Invalid split name '{v}': must be non-empty and contain only [a-zA-Z0-9_-]")
+        return v
+
+    @field_validator("positive_cases_to_move_from_eval_to_test")
+    @classmethod
+    def validate_positive_cases_to_move(cls, v: float) -> float:
+        if not 0.0 <= v <= 1.0:
+            raise ValueError(f"positive_cases_to_move_from_eval_to_test must be between 0.0 and 1.0 inclusive, got {v}")
         return v
 
     @field_validator("potential_sequence_lengths")

@@ -109,3 +109,7 @@ search_from_end: false
 # Default (when omitted): [1024, 1536, 2048]
 # Example: [512, 1024, 1536, 2048, 4096]
 potential_sequence_lengths: [1024, 1536, 2048]
+
+#if you have a small dataset and an imbalance between positive and negative test cases.
+#this variable will move some percent of your positive cases in your eval split into your test split
+positive_cases_to_move_from_eval_to_test : float= 1.0

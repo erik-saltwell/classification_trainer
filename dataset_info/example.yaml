@@ -111,3 +111,26 @@ search_from_end: false
 # Default (when omitted): [1024, 1536, 2048]
 # Example: [512, 1024, 1536, 2048, 4096]
 potential_sequence_lengths: [1024, 1536, 2048]
+
+
+# ---------------------------------------------------------------------------
+# Split rebalancing (OPTIONAL — default: 0.0)
+# ---------------------------------------------------------------------------
+
+# Fraction of positive cases to move from the validation split into the test
+# split. This is useful when you have a small dataset with an imbalanced class
+# distribution — the test split may end up with too few positive examples to
+# produce meaningful evaluation metrics.
+#
+# When set to a value greater than 0.0, after all three splits are prepared,
+# this fraction of the positive-case rows in the validation split will be
+# copied into the test split, giving you more positive examples to evaluate
+# against.
+#
+# Must be between 0.0 and 1.0 (inclusive).
+#   0.0 — do nothing (default)
+#   0.5 — move half of the validation set's positive cases to the test set
+#   1.0 — move all of the validation set's positive cases to the test set
+positive_cases_to_move_from_eval_to_test: 1.0
+
+
