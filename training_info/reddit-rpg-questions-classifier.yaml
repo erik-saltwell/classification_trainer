@@ -169,7 +169,7 @@ sft_parameters:
 
   # Peak learning rate. Typical range for LoRA fine-tuning: 1e-5 to 5e-4.
   # Default: 2e-4
-  learning_rate: 2e-4
+  learning_rate: 6e-4
 
   # Optimizer. Allowed values:
   #   adamw_torch         — standard PyTorch AdamW
@@ -217,7 +217,7 @@ sft_parameters:
 # Set to your W&B project name to enable wandb logging.
 # All runs for this model will appear under this project.
 # Remove this line (or set to null) to disable wandb entirely.
-wandb_project_name: "my-classifier-project"
+wandb_project_name: "reddit-rpg-rules-questions-classifier"
 
 
 # ---------------------------------------------------------------------------
@@ -247,13 +247,13 @@ sweep_config:
 #   # Displayed as the sweep title on the wandb sweeps page.
 #   # Set to null to let wandb auto-generate a name.
 #   # Example: "lr-rank-search-v1"
- sweep_name: "leearning-rate-only-test"
+ sweep_name: "learning-rate-fine-6e-4@2.5e-5"
 #
 #   # Free-text description of the sweep's purpose, hypothesis, or context.
 #   # Shown in the wandb UI alongside the sweep name. Useful for documenting why
 #   # a sweep was run and what you were trying to learn. Required.
 #   # Example: "Testing whether higher rank improves F1 on the support dataset"
- description: "testing if varying learning rate effects anything"
+ description: "test learning rate around 0.0006 with 0.000025 increments"
 #
 #   # Maximum number of agent runs to execute before the sweep is stopped. Required.
 #   # Caps cost on bayes/random sweeps; grid sweeps end naturally but run_cap is
@@ -277,7 +277,7 @@ sweep_config:
  parameters:
 #     rank: {values: [8, 16, 32]}
 #  learning_rate: {min: 1e-5, max: 2e-2}
-  learning_rate: {values: [3e-5, 1e-4, 2e-4, 3e-4,5e-4,7e-4,2e-3, 5e-3, 7e-3]}
+  learning_rate: {values: [5.75e-4,6e-4,6.25e-4]}
 #     # These LoRA init parameters are also sweepable:
 #     rslora: {values: [true, false]}
 #     use_loftq: {values: [true, false]}

@@ -116,6 +116,7 @@ class SweepCommand(CommandProtocol):
             current_step: int = self.runner.train_model(self.logger)
             results: list[MetricResult] = self.runner.evaluate_model(self.logger, F1Metric())
             self.reporter.report(results, current_step + 1)
+            self.runner.flush_model()
 
     def execute(self, logger: LoggingProtocol) -> None:
         self.logger = logger
