@@ -73,7 +73,7 @@ training_length_type: "epoch"
 
 # Number of steps or epochs to train for. Fractional epochs are allowed.
 # Example: 1.0 (one full epoch), 0.15 (15% of one epoch), 500 (500 steps)
-training_length: 3
+training_length: 1
 
 # ---------------------------------------------------------------------------
 # Sequence and memory settings (REQUIRED)
@@ -169,7 +169,7 @@ sft_parameters:
 
   # Peak learning rate. Typical range for LoRA fine-tuning: 1e-5 to 5e-4.
   # Default: 2e-4
-  learning_rate: 6e-4
+  learning_rate: 5.5e-4
 
   # Optimizer. Allowed values:
   #   adamw_torch         — standard PyTorch AdamW
