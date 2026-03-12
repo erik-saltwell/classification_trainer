@@ -219,6 +219,14 @@ sft_parameters:
 # Remove this line (or set to null) to disable wandb entirely.
 wandb_project_name: "reddit-rpg-rules-questions-classifier"
 
+# Optional group name for organizing runs in the wandb UI.
+# Runs with the same group name are displayed together in the wandb dashboard,
+# making it easy to compare related experiments (e.g. all runs for a particular
+# dataset version or hypothesis).
+# - Sweep runs always use "swp_<sweep_name>" regardless of this setting.
+# - If omitted or null, non-sweep runs default to "adhoc".
+# wandb_group_name: null
+
 
 # ---------------------------------------------------------------------------
 # Hyperparameter sweep configuration (OPTIONAL — used only by the sweep command)
