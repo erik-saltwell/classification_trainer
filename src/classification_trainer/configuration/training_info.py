@@ -48,6 +48,7 @@ class TrainingInfo(BaseModel):
     evaluation_enabled: bool = True
     greater_is_better: bool = False
     wandb_project_name: str | None = None
+    wandb_group_name: str | None = None
     sweep_config: SweepInfo | None = None
 
     @property

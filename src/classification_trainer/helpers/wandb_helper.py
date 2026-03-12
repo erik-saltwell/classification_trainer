@@ -68,9 +68,12 @@ def get_tags(training_info: TrainingInfo, dataset_info: DatasetInfo) -> list[str
 
 def initialize_wandb(training_info: TrainingInfo, dataset_info: DatasetInfo, job_type: WandBJobType) -> wandb.Run:
     os.environ["WANDB_LOG_MODEL"] = "false"
-    group_name = "manual_run"
     if training_info.sweep_config is not None:
         group_name = "swp_" + training_info.sweep_config.sweep_name
+    elif training_info.wandb_group_name is not None:
+        group_name = training_info.wandb_group_name
+    else:
+        group_name = "adhoc"
 
     wandb.login()
     return_value = wandb.init(
