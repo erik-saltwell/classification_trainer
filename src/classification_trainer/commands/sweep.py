@@ -112,6 +112,7 @@ class SweepCommand(CommandProtocol):
     def run_single_trial(self) -> None:
         with initialize_wandb(self.training_info, self.dataset_info, WandBJobType.SWEEP) as run:
             sweep_run_config: dict[str, Any] = dict(run.config)
+            self.logger.report_message(json.dumps(sweep_run_config, default=str))
             self.runner.training_info = apply_trial_sft_parameters(self.training_info, sweep_run_config)
             self.runner.load_model(self.logger)
             current_step: int = self.runner.train_model(self.logger)

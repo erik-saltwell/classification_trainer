@@ -277,7 +277,7 @@ sweep_config:
  parameters:
 #     rank: {values: [8, 16, 32]}
 #  learning_rate: {min: 1e-5, max: 2e-2}
-  learning_rate: {values: [5e-4.0, 5.25e-4, 5.5e-4, 5.75e-4]}
+  learning_rate: {values: [5.0e-4, 5.25e-4,  5.5e-4, 5.75e-4,5.0e-4, 6.0e-4]}
 #     # These LoRA init parameters are also sweepable:
 #     rslora: {values: [true, false]}
 #     use_loftq: {values: [true, false]}
