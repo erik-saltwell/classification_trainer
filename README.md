@@ -234,7 +234,7 @@ outputs/                              # Training checkpoints and logs
     ├── checkpoint-100/
     └── <run_id>/                     # Per-trial directories (sweep mode)
 
-output_models/                        # Saved model artifacts
+outputs/                              # Saved model artifacts
 └── <model_name>/
     ├── lora/                         # LoRA adapter weights
     ├── gguf/                         # GGUF quantized model files

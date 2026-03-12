@@ -25,7 +25,7 @@ class PublishingInfo(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     # GGUF: one directory and one HuggingFace repo is created per quantization.
-    # Slug pattern: gguf-<quant>  (e.g. output_models/<model>/gguf-q8_0/)
+    # Slug pattern: gguf-<quant>  (e.g. outputs/<model>/gguf-q8_0/)
     # Only used when save_gguf or publish_gguf is True.
     gguf_quantizations: list[str] = ["q8_0"]
 

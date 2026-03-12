@@ -67,7 +67,7 @@ publish_lora: true
 
 Represents the collection of files produced by saving one format to disk.
 
-**Location**: `output_models/<hf-model-name>/<format-slug>/`
+**Location**: `outputs/<hf-model-name>/<format-slug>/`
 - `hf-model-name` = `TrainingInfo.model_name` (the bare model name, not `username/model`)
 - `format-slug` = `gguf`, `lora`, or `merged`
 
@@ -135,7 +135,7 @@ One repository per saved format on HuggingFace Hub.
 [Training Complete]
        │
        ▼
-[Save to disk: output_models/<name>/<format>/]  ← publishing_helper.save_model()
+[Save to disk: outputs/<name>/<format>/]  ← publishing_helper.save_model()
        │  (includes README.md model card)
        ▼
 [Locally available]
@@ -160,7 +160,7 @@ One repository per saved format on HuggingFace Hub.
 | Property | Path | Created by |
 |----------|------|-----------|
 | `publishing_info` | `publishing_info/` | `ensure_all_dirs_exist()` |
-| `output_models` | `output_models/` | `publishing_helper.save_model()` (on demand) |
+| `outputs` | `outputs/` | `publishing_helper.save_model()` (on demand) |
 
 ---
 
@@ -170,7 +170,7 @@ One repository per saved format on HuggingFace Hub.
 publishing_info/
 └── <name>.yaml                  # PublishingInfo config
 
-output_models/
+outputs/
 └── <model-name>/
     ├── gguf/
     │   ├── <model>-gguf-q8_0.gguf

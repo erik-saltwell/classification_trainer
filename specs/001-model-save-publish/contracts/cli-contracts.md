@@ -33,8 +33,8 @@ classification-trainer train
 **Output (when --publishing-info provided)**:
 ```
 [blue]Saving model artifacts...[/blue]
-Saving lora → output_models/<model-name>/lora/  ✓
-Saving gguf → output_models/<model-name>/gguf/
+Saving lora → outputs/<model-name>/lora/  ✓
+Saving gguf → outputs/<model-name>/gguf/
     Quantizing q8_0 → <model-name>-gguf-q8_0.gguf
     Quantizing q4_k_m → <model-name>-gguf-q4_k_m.gguf
   ✓ gguf
@@ -63,7 +63,7 @@ classification-trainer publish
 **Behavior**:
 1. Load and validate both configs (fail fast on invalid config)
 2. For each enabled publish format (per boolean flags), including one iteration per GGUF quant:
-   a. Check that `output_models/<model-name>/<format-slug>/` exists and contains `README.md`
+   a. Check that `outputs/<model-name>/<format-slug>/` exists and contains `README.md`
    b. Create HuggingFace repository `<hf-username>/<model-name>-<format-slug>` if not exists (private)
    c. Upload all files in the format directory including `README.md`
    d. Report success or failure for this format
@@ -84,10 +84,10 @@ Publishing gguf → alice/my-classifier-gguf  ✓
 
 **Error examples**:
 ```
-[red]Error: No saved artifacts found at output_models/my-classifier/gguf-q8_0/.
+[red]Error: No saved artifacts found at outputs/my-classifier/gguf-q8_0/.
 Run `train --publishing-info <name>` first.[/red]
 
-[red]Error: Missing model card at output_models/my-classifier/lora/README.md.
+[red]Error: Missing model card at outputs/my-classifier/lora/README.md.
 Re-run `train --publishing-info <name>` to regenerate.[/red]
 ```
 
@@ -129,7 +129,7 @@ publish_merged: false
 ## Output Directory Layout Contract
 
 ```
-output_models/
+outputs/
 └── <TrainingInfo.model_name>/
     ├── gguf/                              # all GGUF quants share one directory
     │   ├── <model>-gguf-<quant>.gguf     # one file per quantization level

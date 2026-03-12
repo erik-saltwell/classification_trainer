@@ -148,7 +148,7 @@ of which formats are saved locally vs published.
 ## 8. CommonPaths Extension
 
 **Decision**: Add `PUBLISHING_INFO_DIR` and `OUTPUT_MODELS_DIR` to `CommonPaths`. Add properties
-`publishing_info` and `output_models`. Add `publishing_info` to `ensure_all_dirs_exist`.
+`publishing_info` and `outputs`. Add `publishing_info` to `ensure_all_dirs_exist`.
 
 **Rationale**: Consistent with existing pattern. `OUTPUT_MODELS_DIR` should NOT be created by
 `ensure_all_dirs_exist` (it is created on demand during save); only `publishing_info` is a

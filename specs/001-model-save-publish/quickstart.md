@@ -50,7 +50,7 @@ python -m classification_trainer train \
 
 After training completes, artifacts are saved to:
 ```
-output_models/my-classifier/
+outputs/my-classifier/
 ├── lora/
 │   ├── adapter_config.json
 │   ├── adapter_model.safetensors
@@ -69,7 +69,7 @@ output_models/my-classifier/
 Review the generated card before publishing:
 
 ```bash
-cat output_models/my-classifier/gguf-q8_0/README.md
+cat outputs/my-classifier/gguf-q8_0/README.md
 ```
 
 The card contains your description, training config, dataset info, and pre/post metrics.
@@ -154,10 +154,10 @@ Then run `train --publishing-info save-only` — no HuggingFace credentials need
 
 Confirm the feature works correctly:
 
-1. `output_models/<model-name>/` directory exists with non-empty format subdirectories
+1. `outputs/<model-name>/` directory exists with non-empty format subdirectories
 2. Each format directory contains `README.md`
 3. `README.md` contains the `description` text from the publishing config
 4. `README.md` contains pre-training and post-training metrics
 5. After `publish`, HuggingFace repositories exist at the expected URLs
 6. HuggingFace repository README matches the local `README.md`
-7. Running `train` without `--publishing-info` produces no `output_models/` directory
+7. Running `train` without `--publishing-info` produces no `outputs/` directory

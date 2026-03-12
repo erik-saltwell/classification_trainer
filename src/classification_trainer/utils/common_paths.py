@@ -17,7 +17,7 @@ class CommonPaths:
     CHAT_TEMPLATE_INFO_DIR: Path = Path("chat_template_info")
     INFERENCE_INFO_DIR: Path = Path("inference_info")
     PUBLISHING_INFO_DIR: Path = Path("publishing_info")
-    OUTPUT_MODELS_DIR: Path = Path("output_models")
+    OUTPUT_MODELS_DIR: Path = Path("outputs")
 
     @property
     def dataset_info(self) -> Path:
@@ -61,9 +61,8 @@ class CommonPaths:
     def get_model_save_root_directory(self, model_name: str) -> Path:
         return self.OUTPUT_MODELS_DIR / Path("saves") / Path(model_name)
 
-    def ensure_directory(self, dir: Path) -> None:
-        if not dir.is_dir():
-            raise ValueError("ensure_direcory called on non-directory")
+    @staticmethod
+    def ensure_directory(dir: Path) -> None:
         dir.mkdir(parents=True, exist_ok=True)
 
     def clear_checkpoint_directories(self, model_name: str) -> None:
@@ -77,4 +76,9 @@ class CommonPaths:
     @staticmethod
     def get() -> CommonPaths:
         """static constructor to create a CommonPaths object."""
-        return CommonPaths()
+        paths = CommonPaths()
+        for subdir in ("hub", "datasets", "assets"):
+            CommonPaths.ensure_directory(paths.OUTPUT_MODELS_DIR / "hf" / subdir)
+        for subdir in ("artifacts", "cache", "data", "config"):
+            CommonPaths.ensure_directory(paths.OUTPUT_MODELS_DIR / "wandb" / subdir)
+        return paths

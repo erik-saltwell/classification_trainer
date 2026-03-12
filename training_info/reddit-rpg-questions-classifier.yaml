@@ -15,7 +15,7 @@
 # ---------------------------------------------------------------------------
 
 # Short name for the trained model. Used as the HuggingFace repo name suffix
-# and as the output directory name under output_models/.
+# and as the output directory name under outputs/.
 # Format: kebab-case, no spaces. Example: "my-rpg-classifier"
 model_name: "reddit-rpg-rules-questions-classifier"
 

@@ -32,7 +32,7 @@ YAML files live under `training_info/`, `dataset_info/`, and `base_model_info/` 
 All project-known directory paths MUST be declared as constants and properties in
 `utils/common_paths.py` (`CommonPaths`). No module outside `common_paths.py` may
 hard-code or construct a project directory path independently. Any new feature that
-introduces a new directory (e.g., `publishing_info/`, `output_models/`) MUST add the
+introduces a new directory (e.g., `publishing_info/`, `outputs/`) MUST add the
 corresponding constant, property, and — if it is a config directory that should always
 exist — a call in `ensure_all_dirs_exist()`. Runtime-only output directories MUST be
 exposed as a property but MUST NOT be auto-created by `ensure_all_dirs_exist()`.

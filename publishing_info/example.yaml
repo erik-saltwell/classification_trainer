@@ -9,7 +9,7 @@
 # Set publishing: null in training_info to skip all saving and publishing.
 #
 # Model artifacts are saved under:
-#   output_models/<model_name>/<format>/
+#   outputs/<model_name>/<format>/
 #
 # HuggingFace repos are named:
 #   <hugging_face_user_name>/<model_name>-<format>

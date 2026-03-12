@@ -17,7 +17,7 @@ save APIs for GGUF/LoRA/merged.
 **Language/Version**: Python 3.11+
 **Primary Dependencies**: Unsloth (GGUF/LoRA/merged save), `huggingface_hub` (upload + ModelCard),
 Pydantic v2 (config model), Typer + Rich (CLI)
-**Storage**: Local filesystem (`output_models/`), HuggingFace Hub (remote)
+**Storage**: Local filesystem (`outputs/`), HuggingFace Hub (remote)
 **Testing**: pytest (existing project convention)
 **Target Platform**: Linux (GPU server) or any machine with sufficient VRAM
 **Project Type**: CLI tool
@@ -67,10 +67,10 @@ src/classification_trainer/
 ├── console/
 │   └── main.py                     # MODIFY: add `publish` command; add --publishing-info to train
 └── utils/
-    └── common_paths.py             # MODIFY: add publishing_info + output_models paths
+    └── common_paths.py             # MODIFY: add publishing_info + outputs paths
 
 publishing_info/                    # NEW directory (config YAMLs)
-output_models/                      # Created at runtime by publishing_helper
+outputs/                      # Created at runtime by publishing_helper
 ```
 
 **Structure Decision**: Single-project layout. All changes follow the existing three-layer
@@ -117,9 +117,9 @@ Files inside are named `<model-name>-gguf-<quant>.gguf` (e.g. `my-classifier-ggu
 
 **CommonPaths changes**:
 - Add `PUBLISHING_INFO_DIR = Path("publishing_info")` constant
-- Add `OUTPUT_MODELS_DIR = Path("output_models")` constant
+- Add `OUTPUT_MODELS_DIR = Path("outputs")` constant
 - Add `publishing_info` property
-- Add `output_models` property (returns path, does NOT auto-create)
+- Add `outputs` property (returns path, does NOT auto-create)
 - Add `publishing_info` to `ensure_all_dirs_exist()`
 
 ## Complexity Tracking

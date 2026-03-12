@@ -31,20 +31,20 @@ deployment does not require HuggingFace credentials or network access.
 
 **Independent Test**: Run `train` with a publishing config that specifies at least one
 format. Verify the expected subdirectory structure, model files, and `README.md` model
-card appear under `output_models/`.
+card appear under `outputs/`.
 
 **Acceptance Scenarios**:
 
 1. **Given** a publishing config with one or more save formats enabled,
    **When** the train command finishes,
-   **Then** `output_models/<hf-model-name>/<format>/` directories exist containing
+   **Then** `outputs/<hf-model-name>/<format>/` directories exist containing
    the correct artifacts and a `README.md` model card for each enabled format.
 
 2. **Given** a publishing config with no formats enabled,
    **When** the train command finishes,
-   **Then** no `output_models/` directory is created and training completes normally.
+   **Then** no `outputs/` directory is created and training completes normally.
 
-3. **Given** a training run where `output_models/<format>/` already contains a previous
+3. **Given** a training run where `outputs/<format>/` already contains a previous
    save,
    **When** training completes again,
    **Then** the existing artifacts and model card are overwritten with the new best
@@ -143,7 +143,7 @@ card contains the specified description text.
 - **FR-001**: The train command MUST automatically save the best-performing model
   checkpoint to disk in all formats enabled in the publishing config, immediately
   after training completes.
-- **FR-002**: Saved artifacts MUST be stored under `output_models/<hf-model-name>/
+- **FR-002**: Saved artifacts MUST be stored under `outputs/<hf-model-name>/
   <format-slug>/` relative to the project root, where `hf-model-name` is the
   HuggingFace model name from `TrainingInfo`.
 - **FR-003**: The system MUST support saving in three format types: GGUF (for Ollama /
@@ -194,7 +194,7 @@ card contains the specified description text.
   All GGUF quantization levels share the single `gguf` slug (and directory); files
   inside are named `<model-name>-gguf-<quant>.gguf`.
 - **SavedModelArtifact**: A collection of files on disk representing one saved format
-  of a trained model, living at `output_models/<model-name>/<format-slug>/`, including
+  of a trained model, living at `outputs/<model-name>/<format-slug>/`, including
   a `README.md` model card.
 - **ModelCard**: A `README.md` file generated per saved format, containing the model
   description (from publishing config), base model details, dataset summary, training
@@ -206,7 +206,7 @@ card contains the specified description text.
 ### Measurable Outcomes
 
 - **SC-001**: After any training run that references a publishing config with at least
-  one format enabled, the corresponding `output_models/` artifact directories exist,
+  one format enabled, the corresponding `outputs/` artifact directories exist,
   are non-empty, and each contains a `README.md` model card that includes both
   pre-training and post-training classification metrics.
 - **SC-002**: A researcher can run the publish command and have each enabled format
