@@ -136,6 +136,7 @@ class TrainingInfo(BaseModel):
             seed=self.seed,
             logging_steps=10,
             save_steps=self.evaluation_steps,
+            save_total_limit=2,
             save_strategy=self.save_strategy,
             eval_strategy=self.evaluation_strategy,
             eval_steps=self.evaluation_steps,

@@ -91,6 +91,8 @@ class TrainCommand(CommandProtocol):
                     and self.training_info.publishing_info.any_publish_enabled
                 ):
                     runner.save_model(pre_run_results, post_run_results, logger)
+
+                CommonPaths.get().clear_checkpoint_directories(self.training_info.model_name)
         except Exception as e:
             logger.report_exception("Error Trainingt", e)
             raise typer.Exit(code=1) from e

@@ -120,6 +120,7 @@ class SweepCommand(CommandProtocol):
             results: list[MetricResult] = self.runner.evaluate_model(self.logger, F1Metric())
             self.reporter.report(results, current_step + 1)
             self.runner.flush()
+            CommonPaths.get().clear_checkpoint_directories(self.training_info.model_name)
 
     def execute(self, logger: LoggingProtocol) -> None:
         self.logger = logger

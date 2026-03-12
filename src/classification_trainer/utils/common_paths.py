@@ -66,6 +66,9 @@ class CommonPaths:
             raise ValueError("ensure_direcory called on non-directory")
         dir.mkdir(parents=True, exist_ok=True)
 
+    def clear_checkpoint_directories(self, model_name: str) -> None:
+        shutil.rmtree(self.get_model_checkpoint_directory(model_name), ignore_errors=True)
+
     def clear_cache_model_directories(self, model_name: str) -> None:
         shutil.rmtree(self.get_model_checkpoint_directory(model_name), ignore_errors=True)
         shutil.rmtree(self.get_model_sweeps_directory(model_name), ignore_errors=True)
