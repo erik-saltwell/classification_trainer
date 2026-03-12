@@ -255,41 +255,13 @@ sweep_config:
 #   # Displayed as the sweep title on the wandb sweeps page.
 #   # Set to null to let wandb auto-generate a name.
 #   # Example: "lr-rank-search-v1"
- sweep_name: "learning-rate-fine-6e-4@2.5e-5"
-#
-#   # Free-text description of the sweep's purpose, hypothesis, or context.
-#   # Shown in the wandb UI alongside the sweep name. Useful for documenting why
-#   # a sweep was run and what you were trying to learn. Required.
-#   # Example: "Testing whether higher rank improves F1 on the support dataset"
- description: "test learning rate around 0.0006 with 0.000025 increments"
-#
-#   # Maximum number of agent runs to execute before the sweep is stopped. Required.
-#   # Caps cost on bayes/random sweeps; grid sweeps end naturally but run_cap is
-#   # still enforced as a safety limit.
-#   # Example: 20
- run_cap: 10
-#
-#   # Parameters to sweep. Each key must be a valid sft_parameters field name.
-#   # Only list the parameters you want to vary — parameters not listed here
-#   # automatically use their values from the sft_parameters block above.
-#   # Two formats are supported:
-#   #
-#   # 1. Discrete list — sweep samples from these values:
-#   #    rank: {values: [8, 16, 32, 64]}
-#   #
-#   # 2. Continuous range — sweep samples from a continuous distribution:
-#   #    learning_rate: {min: 1e-5, max: 1e-3}   # auto-selects log-uniform
-#   #    weight_decay: {min: 0.0, max: 0.1}       # auto-selects uniform
-#   #    (learning_rate uses log-uniform; all others use uniform distribution)
-#   #
+ sweep_name: "rank-rslora-alpha-grid"
+ description: "Grid search over rank, rsLoRA, and alpha multiplier combinations"
+ run_cap: 16
  parameters:
-#     rank: {values: [8, 16, 32]}
-#  learning_rate: {min: 1e-5, max: 2e-2}
-  learning_rate: {values: [5.0e-4, 5.25e-4,  5.5e-4, 5.75e-4,5.0e-4, 6.0e-4]}
-#     # These LoRA init parameters are also sweepable:
-#     rslora: {values: [true, false]}
-#     use_loftq: {values: [true, false]}
-#     loftq_bits: {values: [4, 8]}
+  rank: {values: [8, 16, 32, 64]}
+  rslora: {values: [true, false]}
+  alpha_multiplier: {values: [1, 2]}
 
 
 
