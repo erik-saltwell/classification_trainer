@@ -197,7 +197,7 @@ sft_parameters:
   # the quantization and LoRA init to minimize the approximation error of the
   # quantized base model. Only useful when load_in_4bit is true.
   # Default: false
-  use_loftq: false
+  use_loftq: true
 
   # Number of quantization bits used by LoftQ. Only applies when use_loftq is true.
   # Allowed values: 4, 8
