@@ -147,12 +147,12 @@ sft_parameters:
   # LoRA rank. Higher values increase model capacity but use more VRAM.
   # Common values: 8, 16, 32, 64. rsLoRA is auto-enabled above rank 16.
   # Default: 16
-  rank: 16
+  rank: 8
 
   # lora_alpha = rank * alpha_multiplier. Controls LoRA scaling.
   # Common values: 1 (alpha = rank) or 2 (alpha = 2*rank).
   # Default: 2
-  alpha_multiplier: 2
+  alpha_multiplier: 1
 
   # If true, also trains MLP projection modules (up_proj, down_proj, gate_proj).
   # Increases expressiveness at the cost of more VRAM and compute.
