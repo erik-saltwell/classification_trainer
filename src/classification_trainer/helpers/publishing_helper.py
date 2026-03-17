@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import shutil
 import tempfile
 from pathlib import Path
@@ -10,6 +11,7 @@ from transformers import PreTrainedModel, PreTrainedTokenizerBase
 
 from classification_trainer.configuration import (
     BaseModelInfo,
+    ChatTemplateInfo,
     DatasetInfo,
     PublishingInfo,
     TrainingInfo,
@@ -79,6 +81,20 @@ def _save_merged(
 # ---------------------------------------------------------------------------
 
 
+def _build_template_body(chat_template_info: ChatTemplateInfo) -> str:
+    end_of_turn = chat_template_info.stop_strings[0] if chat_template_info.stop_strings else ""
+    instr_sep = chat_template_info.instruction_separator
+    resp_sep = chat_template_info.response_separator
+    sys_sep = chat_template_info.system_separator
+
+    if sys_sep is not None:
+        system_part = f"{{{{- if .System }}}}{sys_sep}{{{{ .System }}}}{end_of_turn}\n{{{{- end }}}}\n"
+    else:
+        system_part = "{{- if .System }}{{ .System }}\n{{- end }}\n"
+
+    return system_part + f"{{{{- if .Prompt }}}}{instr_sep}{{{{ .Prompt }}}}{end_of_turn}\n{{{{- end }}}}\n" + resp_sep
+
+
 def generate_modelfile(
     save_dir: Path,
     format_slug: str,
@@ -105,19 +121,7 @@ def generate_modelfile(
     system_block = f'SYSTEM """\n{training_info.system_prompt}\n"""'
 
     # --- TEMPLATE block ---
-    end_of_turn = chat_template_info.stop_strings[0] if chat_template_info.stop_strings else ""
-    instr_sep = chat_template_info.instruction_separator
-    resp_sep = chat_template_info.response_separator
-    sys_sep = chat_template_info.system_separator
-
-    if sys_sep is not None:
-        system_part = f"{{{{- if .System }}}}{sys_sep}{{{{ .System }}}}{end_of_turn}\n{{{{- end }}}}\n"
-    else:
-        system_part = "{{- if .System }}{{ .System }}\n{{- end }}\n"
-
-    template_body = (
-        system_part + f"{{{{- if .Prompt }}}}{instr_sep}{{{{ .Prompt }}}}{end_of_turn}\n{{{{- end }}}}\n" + resp_sep
-    )
+    template_body = _build_template_body(chat_template_info)
     template_block = f'TEMPLATE """\n{template_body}"""'
 
     # --- PARAMETER lines ---
@@ -134,6 +138,34 @@ def generate_modelfile(
 
     content = "\n\n".join([from_line, system_block, template_block, "\n".join(param_lines)])
     (save_dir / "Modelfile").write_text(content, encoding="utf-8")
+
+
+def generate_gguf_hf_metadata(
+    save_dir: Path,
+    training_info: TrainingInfo,
+    publishing_info: PublishingInfo,
+) -> None:
+    """Write HuggingFace Ollama metadata files (template, system, params) to ``save_dir``.
+
+    These files enable ``ollama run hf.co/<user>/<repo>`` without any local download.
+    Called only for SaveFormat.GGUF.
+    """
+    chat_template_info = training_info.base_model_info.chat_template_info
+    inference_info = training_info.inference_info
+
+    (save_dir / "template").write_text(_build_template_body(chat_template_info), encoding="utf-8")
+    (save_dir / "system").write_text(training_info.system_prompt, encoding="utf-8")
+
+    params: dict = {
+        "temperature": inference_info.temperature,
+        "top_p": inference_info.top_p,
+        "num_predict": inference_info.max_new_tokens,
+        "num_ctx": training_info.max_sequence_length,
+        "stop": list(chat_template_info.stop_strings),
+    }
+    if inference_info.repetition_penalty is not None:
+        params["repeat_penalty"] = inference_info.repetition_penalty
+    (save_dir / "params").write_text(json.dumps(params, indent=2), encoding="utf-8")
 
 
 # ---------------------------------------------------------------------------
@@ -336,6 +368,10 @@ def save_model(
             if slug in (SaveFormat.GGUF, SaveFormat.MERGED):
                 logger.report_message(f"    Generating Modelfile \u2192 {save_dir}/Modelfile")
                 generate_modelfile(save_dir, slug, training_info, publishing_info)
+            # HF Ollama metadata files are GGUF-only; not applicable to merged or lora
+            if slug == SaveFormat.GGUF:
+                logger.report_message(f"    Generating HF metadata \u2192 {save_dir}/{{template,system,params}}")
+                generate_gguf_hf_metadata(save_dir, training_info, publishing_info)
             logger.report_message(f"  \u2713 {slug}")
             flush_gpu_memory()
         except Exception:
@@ -403,6 +439,9 @@ def publish_model(
             if slug in (SaveFormat.GGUF, SaveFormat.MERGED) and not (save_dir / "Modelfile").exists():
                 logger.report_message(f"    Generating missing Modelfile \u2192 {save_dir}/Modelfile")
                 generate_modelfile(save_dir, slug, training_info, publishing_info)
+            if slug == SaveFormat.GGUF and not all((save_dir / f).exists() for f in ("template", "system", "params")):
+                logger.report_message(f"    Generating missing HF metadata \u2192 {save_dir}/")
+                generate_gguf_hf_metadata(save_dir, training_info, publishing_info)
             logger.report_message(f"Publishing {slug} \u2192 {repo_id}")
             api.create_repo(repo_id=repo_id, repo_type="model", exist_ok=True, private=publishing_info.private)
             api.upload_folder(folder_path=str(save_dir), repo_id=repo_id, repo_type="model")
