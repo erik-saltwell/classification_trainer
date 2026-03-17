@@ -251,3 +251,4 @@ llama.cpp
 outputs/
 Modelfile
 test-reddit-rpg-rules-questions-classifier/
+llama.cpp/

@@ -1,12 +1,16 @@
 from __future__ import annotations
 
-import unsloth  # isort: skip  # Must precede all transformers imports
 import os
+
+os.environ["UNSLOTH_STUDIO_DISABLED"] = "1"
+
+import unsloth  # isort: skip  # Must precede all transformers imports
 from datetime import datetime
 from importlib.metadata import PackageNotFoundError, metadata
 from importlib.metadata import version as dist_version
 from typing import Annotated
 
+import torch
 import typer
 from dotenv import load_dotenv
 from huggingface_hub.errors import HfHubHTTPError
@@ -31,9 +35,11 @@ from .rich_logging_protocol import RichConsoleLogger
 
 load_dotenv()
 configure_logging()
-print(unsloth.__version__[0:0])
+print(f"unsloth version: {unsloth.__version__}")
 
-os.environ["UNSLOTH_STUDIO_DISABLED"] = "1"
+print(f"torch CUDA: {torch.cuda.is_available()}")
+print(f"torch device: {torch.cuda.get_device_name(0)}")
+
 
 app = typer.Typer(
     name="classification-trainer",
