@@ -4,3 +4,4 @@ stop_strings: ["<|im_end|>", "<|im_start|>"]
 eos_token_strings: ["<|im_end|>"]
 add_special_tokens: false
 assistant_newline: true
+system_separator: "<|im_start|>system\n"

@@ -20,6 +20,7 @@ class ChatTemplateInfo(BaseModel):
     eos_token_strings: tuple[str, ...] = ()
     add_special_tokens: bool = False
     assistant_newline: bool = True
+    system_separator: str | None = None
 
     def get_eos_token_ids(self, tokenizer: PreTrainedTokenizerBase) -> list[int]:
         ids: list[int] = []

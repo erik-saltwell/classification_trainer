@@ -4,3 +4,4 @@ stop_strings: ["<|eot_id|>"]
 eos_token_strings: ["<|eot_id|>"]
 add_special_tokens: false
 assistant_newline: false
+system_separator: "<|start_header_id|>system<|end_header_id|>\n\n"

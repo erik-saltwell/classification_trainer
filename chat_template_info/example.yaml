@@ -66,3 +66,26 @@ add_special_tokens: false
 # If false, a newline is appended before generation begins.
 # For ChatML (separator ends with \n): true. Default: true
 assistant_newline: true
+
+
+# ---------------------------------------------------------------------------
+# Modelfile generation (OPTIONAL — default: null)
+# ---------------------------------------------------------------------------
+
+# Token string that opens the system message turn in the prompt template.
+# Used when generating an Ollama Modelfile (TEMPLATE instruction) for published models.
+# If set, the system prompt gets its own dedicated block in the TEMPLATE:
+#   {{ if .System }}<system_separator>{{ .System }}<stop_strings[0]>\n{{ end }}
+# If null, the system prompt is rendered inline before the first user turn:
+#   {{ if .System }}{{ .System }}\n{{ end }}
+#
+# Set this to match the model's system-turn format. For most architectures,
+# this is the instruction_separator with "user" replaced by "system".
+#
+# Example for ChatML:   "<|im_start|>system\n"
+# Example for Llama 3:  "<|start_header_id|>system<|end_header_id|>\n\n"
+# Example for Gemma:    "<start_of_turn>system\n"
+# Example for Phi:      "<|system|>\n"
+# Example for Mistral:  null  (no separate system block — inline before [INST])
+# Default: null
+system_separator: "<|im_start|>system\n"

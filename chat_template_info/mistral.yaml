@@ -4,3 +4,4 @@ stop_strings: ["</s>"]
 eos_token_strings: ["</s>"]
 add_special_tokens: true
 assistant_newline: false
+system_separator: null

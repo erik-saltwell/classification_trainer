@@ -75,6 +75,68 @@ def _save_merged(
 
 
 # ---------------------------------------------------------------------------
+# Modelfile generation (Ollama / llama.cpp)
+# ---------------------------------------------------------------------------
+
+
+def generate_modelfile(
+    save_dir: Path,
+    format_slug: str,
+    training_info: TrainingInfo,
+    publishing_info: PublishingInfo,
+) -> None:
+    """Generate an Ollama-compatible Modelfile in ``save_dir``.
+
+    Supported formats: GGUF (FROM = relative .gguf filename) and merged
+    (FROM = HuggingFace repo ID).  LoRA is not supported and must not be
+    passed as ``format_slug``.
+    """
+    chat_template_info = training_info.base_model_info.chat_template_info
+    inference_info = training_info.inference_info
+
+    # --- FROM line ---
+    if format_slug == SaveFormat.GGUF:
+        quant = publishing_info.gguf_quantizations[0]
+        from_line = f"FROM {training_info.model_name}-gguf-{quant}.gguf"
+    else:  # MERGED
+        from_line = f"FROM {training_info.hugging_face_user_name}/{training_info.model_name}-merged"
+
+    # --- SYSTEM block ---
+    system_block = f'SYSTEM """\n{training_info.system_prompt}\n"""'
+
+    # --- TEMPLATE block ---
+    end_of_turn = chat_template_info.stop_strings[0] if chat_template_info.stop_strings else ""
+    instr_sep = chat_template_info.instruction_separator
+    resp_sep = chat_template_info.response_separator
+    sys_sep = chat_template_info.system_separator
+
+    if sys_sep is not None:
+        system_part = f"{{{{- if .System }}}}{sys_sep}{{{{ .System }}}}{end_of_turn}\n{{{{- end }}}}\n"
+    else:
+        system_part = "{{- if .System }}{{ .System }}\n{{- end }}\n"
+
+    template_body = (
+        system_part + f"{{{{- if .Prompt }}}}{instr_sep}{{{{ .Prompt }}}}{end_of_turn}\n{{{{- end }}}}\n" + resp_sep
+    )
+    template_block = f'TEMPLATE """\n{template_body}"""'
+
+    # --- PARAMETER lines ---
+    param_lines: list[str] = [
+        f"PARAMETER temperature {inference_info.temperature}",
+        f"PARAMETER top_p {inference_info.top_p}",
+        f"PARAMETER num_predict {inference_info.max_new_tokens}",
+        f"PARAMETER num_ctx {training_info.max_sequence_length}",
+    ]
+    if inference_info.repetition_penalty is not None:
+        param_lines.append(f"PARAMETER repeat_penalty {inference_info.repetition_penalty}")
+    for stop in chat_template_info.stop_strings:
+        param_lines.append(f'PARAMETER stop "{stop}"')
+
+    content = "\n\n".join([from_line, system_block, template_block, "\n".join(param_lines)])
+    (save_dir / "Modelfile").write_text(content, encoding="utf-8")
+
+
+# ---------------------------------------------------------------------------
 # Model card generation
 # ---------------------------------------------------------------------------
 
@@ -271,6 +333,9 @@ def save_model(
                 pre_metrics,
                 post_metrics,
             )
+            if slug in (SaveFormat.GGUF, SaveFormat.MERGED):
+                logger.report_message(f"    Generating Modelfile \u2192 {save_dir}/Modelfile")
+                generate_modelfile(save_dir, slug, training_info, publishing_info)
             logger.report_message(f"  \u2713 {slug}")
             flush_gpu_memory()
         except Exception:
@@ -335,6 +400,9 @@ def publish_model(
             continue
 
         try:
+            if slug in (SaveFormat.GGUF, SaveFormat.MERGED) and not (save_dir / "Modelfile").exists():
+                logger.report_message(f"    Generating missing Modelfile \u2192 {save_dir}/Modelfile")
+                generate_modelfile(save_dir, slug, training_info, publishing_info)
             logger.report_message(f"Publishing {slug} \u2192 {repo_id}")
             api.create_repo(repo_id=repo_id, repo_type="model", exist_ok=True, private=publishing_info.private)
             api.upload_folder(folder_path=str(save_dir), repo_id=repo_id, repo_type="model")

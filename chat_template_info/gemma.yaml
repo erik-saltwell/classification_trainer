@@ -4,3 +4,4 @@ stop_strings: ["<end_of_turn>"]
 eos_token_strings: ["<end_of_turn>"]
 add_special_tokens: false
 assistant_newline: false
+system_separator: "<start_of_turn>system\n"

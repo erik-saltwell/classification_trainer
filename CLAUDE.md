@@ -18,6 +18,8 @@ Auto-generated from all feature plans. Last updated: 2026-03-05
 - HuggingFace Dataset (in-memory, Arrow-backed) (009-pretokenize-runner)
 - Python 3.11+ + Pydantic v2, wandb sweep/agent API, TRL SFTTrainer, Typer/Rich (010-sweep-params-observability)
 - N/A (config files only — YAML in `training_info/`) (010-sweep-params-observability)
+- Python 3.11+ + Pydantic v2, PyYAML, standard library only (no new packages) (011-generate-modelfile)
+- Plain text file written to existing save directories (011-generate-modelfile)
 
 - Python 3.11+ + Unsloth (GGUF/LoRA/merged save), `huggingface_hub` (upload + ModelCard), (001-model-save-publish)
 
@@ -37,9 +39,9 @@ cd src [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECHNOLO
 Python 3.11+: Follow standard conventions
 
 ## Recent Changes
+- 011-generate-modelfile: Added Python 3.11+ + Pydantic v2, PyYAML, standard library only (no new packages)
 - 010-sweep-params-observability: Added Python 3.11+ + Pydantic v2, wandb sweep/agent API, TRL SFTTrainer, Typer/Rich
 - 009-pretokenize-runner: Added Python 3.11+ + Unsloth `FastLanguageModel`, TRL `SFTTrainer`, HuggingFace `datasets` + `transformers`, Pydantic v2
-- 009-pretokenize-runner: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 
 
 <!-- MANUAL ADDITIONS START -->
